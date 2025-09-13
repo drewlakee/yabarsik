@@ -8,6 +8,7 @@ repositories {
 
 dependencies {
     implementation("com.yandex.cloud:java-sdk-serverless:2.8.0")
+    implementation("org.telegram:telegrambots-client:9.1.0")
 
     testImplementation(kotlin("test"))
 }
