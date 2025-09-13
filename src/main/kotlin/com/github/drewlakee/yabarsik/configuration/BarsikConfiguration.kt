@@ -1,8 +1,20 @@
 package com.github.drewlakee.yabarsik.configuration
 
-class BarsikConfiguration {
-    val telegramChatId = System.getenv("TELEGRAM_CHAT_ID")
-        ?: throw IllegalStateException("TELEGRAM_CHAT_ID is expected at environment")
-    val telegramToken = System.getenv("TELEGRAM_TOKEN")
-        ?: throw IllegalStateException("TELEGRAM_TOKEN is expected at environment")
+import com.fasterxml.jackson.databind.ObjectMapper
+
+data class BarsikConfiguration(
+    private val yamlMapper: ObjectMapper,
+    private val configuration: Configuration,
+) {
+    val telegram = configuration.telegram
+
+    data class Configuration(
+        val telegram: Telegram
+    )
+
+    data class Telegram(val report: Report) {
+        data class Report(val chatId: String)
+    }
+
+    fun toYamlString(): String = yamlMapper.writeValueAsString(configuration)
 }
