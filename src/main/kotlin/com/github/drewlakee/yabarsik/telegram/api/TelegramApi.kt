@@ -1,4 +1,4 @@
-package com.github.drewlakee.yabarsik.telegram
+package com.github.drewlakee.yabarsik.telegram.api
 
 import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure

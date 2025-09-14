@@ -1,12 +1,10 @@
 // https://yandex.cloud/ru/docs/functions/concepts/function-invoke
 package com.github.drewlakee.yabarsik
 
-import com.github.drewlakee.yabarsik.scenario.BarsikScenario
-import com.github.drewlakee.yabarsik.telegram.Http
-import com.github.drewlakee.yabarsik.telegram.TelegramApi
+import com.github.drewlakee.yabarsik.telegram.api.Http
+import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.yandex.s3.Http
 import com.github.drewlakee.yabarsik.yandex.s3.YandexS3Api
-import dev.forkhandles.result4k.Result4k
 import yandex.cloud.sdk.functions.Context
 import yandex.cloud.sdk.functions.YcFunction
 
