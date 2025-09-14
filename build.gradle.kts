@@ -59,6 +59,7 @@ tasks.register<Exec>("ycDeployFunction") {
         "--execution-timeout=5m",
         "--source-path=ycFunction.zip",
         "--service-account-id=ajeduks5d1ag7q1rkbo6",
+        "--environment=CONFIGURATION_S3_OBJECT_ID=configuration.yml,CONFIGURATION_S3_BUCKET=yabarsik",
         "--secret=environment-variable=TELEGRAM_TOKEN,id=e6qunf2om3830utk4li6,key=token",
         "--secret=environment-variable=AWS_ACCESS_KEY_ID,id=e6q7hvehrvtsf655otla,key=key-identifier",
         "--secret=environment-variable=AWS_SECRET_ACCESS_KEY,id=e6q7hvehrvtsf655otla,key=secret-key"

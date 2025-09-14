@@ -19,7 +19,7 @@ class Barsik(
         telegramApi.sendMessage(
             configuration.telegram.report.chatId,
             """Привет\! Меня только что разбудили, держу в курсе\. Вот моя текущая конфигурация:
-                ```yaml
+                ```log
                 ${configuration.toYamlString()}
                 ```
                 """

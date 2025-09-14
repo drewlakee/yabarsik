@@ -3,6 +3,7 @@ package com.github.drewlakee.yabarsik.yandex.s3
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.drewlakee.yabarsik.configuration.BarsikConfiguration
 import com.github.drewlakee.yabarsik.logError
@@ -37,8 +38,8 @@ fun YandexS3Api.Companion.Http() = object : YandexS3Api {
         runCatching {
             s3Client.getObject (
                 GetObjectRequest.builder()
-                    .key("configuration.yml")
-                    .bucket("yabarsik")
+                    .key(System.getenv("CONFIGURATION_S3_OBJECT_ID"))
+                    .bucket(System.getenv("CONFIGURATION_S3_BUCKET"))
                     .build()
             ).let {
                 yamlMapper
