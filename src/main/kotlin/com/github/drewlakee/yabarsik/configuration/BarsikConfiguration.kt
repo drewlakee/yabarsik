@@ -1,7 +1,6 @@
 package com.github.drewlakee.yabarsik.configuration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.time.Duration
 
 data class BarsikConfiguration(
     private val yamlMapper: ObjectMapper,
@@ -21,7 +20,7 @@ data class BarsikConfiguration(
         data class Report(val chatId: String)
     }
 
-    data class Wallposts(val owner: String, val schedule: Schedule) {
+    data class Wallposts(val communityId: String, val schedule: Schedule) {
         data class Schedule(val timeZone: String, val checkpoints: List<Checkpoint>) {
             data class Checkpoint(val at: String, val variancePeriod: String)
         }
