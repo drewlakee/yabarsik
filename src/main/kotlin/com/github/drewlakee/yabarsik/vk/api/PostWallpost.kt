@@ -2,6 +2,7 @@
 package com.github.drewlakee.yabarsik.vk.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.github.drewlakee.yabarsik.BarsikEnvironment.VK_COMMUNITY_ACCESS_TOKEN
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -32,7 +33,7 @@ data class PostWallpost(
     override fun toRequest() = Request(Method.POST, "/method/wall.post")
         .body(
             listOf(
-                "access_token=${VkApiAction.communityAccessToken}",
+                "access_token=$VK_COMMUNITY_ACCESS_TOKEN",
                 "owner_id=$ownerId",
                 if (attachments.isNotEmpty()) "attachments=${attachments.joinToString(",")}" else null,
                 "from_group=1",

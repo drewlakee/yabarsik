@@ -1,4 +1,4 @@
-package com.github.drewlakee.yabarsik.configuration
+package com.github.drewlakee.yabarsik
 
 import com.fasterxml.jackson.databind.ObjectMapper
 

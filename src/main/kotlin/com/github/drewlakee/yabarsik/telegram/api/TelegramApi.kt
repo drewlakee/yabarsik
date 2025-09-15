@@ -1,5 +1,6 @@
 package com.github.drewlakee.yabarsik.telegram.api
 
+import com.github.drewlakee.yabarsik.BarsikEnvironment.TELEGRAM_TOKEN
 import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
@@ -16,7 +17,7 @@ interface TelegramApi {
 }
 
 fun TelegramApi.Companion.Http() = object : TelegramApi {
-    private val http = OkHttpTelegramClient(System.getenv("TELEGRAM_TOKEN"))
+    private val http = OkHttpTelegramClient(TELEGRAM_TOKEN)
 
     override fun sendMessage(chatId: String, message: String): Result4k<Message, Throwable> = runCatching {
         http.execute(

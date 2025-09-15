@@ -22,9 +22,6 @@ interface VkApiAction<R> : Action<Result4k<R, RemoteRequestFailed>> {
             .registerKotlinModule()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-        protected val serviceAccessToken = System.getenv("VK_SERVICE_ACCESS_TOKEN")
-        protected val communityAccessToken = System.getenv("VK_COMMUNITY_ACCESS_TOKEN")
-
         protected inline fun <reified R> jsonTo(body: Body): R = JSON.readValue(body.stream)
     }
 }

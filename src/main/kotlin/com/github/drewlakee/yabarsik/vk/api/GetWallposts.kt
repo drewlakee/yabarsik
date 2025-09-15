@@ -4,6 +4,7 @@ package com.github.drewlakee.yabarsik.vk.api
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonValue
+import com.github.drewlakee.yabarsik.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -62,7 +63,7 @@ data class GetWallposts(val domain: String, val offset: Int = 0, val count: Int 
     override fun toRequest(): Request = Request(Method.POST, "/method/wall.get")
         .body(
             listOf(
-                "access_token=${VkApiAction.serviceAccessToken}",
+                "access_token=$VK_SERVICE_ACCESS_TOKEN",
                 "domain=$domain",
                 "offset=$offset",
                 "count=$count",
