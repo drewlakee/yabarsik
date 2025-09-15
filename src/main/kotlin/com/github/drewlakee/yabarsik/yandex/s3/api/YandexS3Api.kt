@@ -1,4 +1,4 @@
-package com.github.drewlakee.yabarsik.yandex.s3
+package com.github.drewlakee.yabarsik.yandex.s3.api
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper

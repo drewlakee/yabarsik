@@ -3,8 +3,8 @@ package com.github.drewlakee.yabarsik
 
 import com.github.drewlakee.yabarsik.telegram.api.Http
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
-import com.github.drewlakee.yabarsik.yandex.s3.Http
-import com.github.drewlakee.yabarsik.yandex.s3.YandexS3Api
+import com.github.drewlakee.yabarsik.yandex.s3.api.Http
+import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
 import yandex.cloud.sdk.functions.Context
 import yandex.cloud.sdk.functions.YcFunction
 

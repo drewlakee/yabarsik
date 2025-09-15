@@ -1,7 +1,7 @@
 package com.github.drewlakee.yabarsik
 
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
-import com.github.drewlakee.yabarsik.yandex.s3.YandexS3Api
+import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.peekFailure
 
