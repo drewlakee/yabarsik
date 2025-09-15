@@ -11,18 +11,18 @@ data class BarsikConfiguration(
     val content = configuration.content
 
     data class Configuration(
-        val telegram: Telegram,
         val wallposts: Wallposts,
         val content: Content,
+        val telegram: Telegram,
     )
 
     data class Telegram(val report: Report) {
         data class Report(val chatId: String)
     }
 
-    data class Wallposts(val communityId: String, val schedule: Schedule) {
-        data class Schedule(val timeZone: String, val checkpoints: List<Checkpoint>) {
-            data class Checkpoint(val at: String, val variancePeriod: String)
+    data class Wallposts(val communityId: String, val dailySchedule: DailySchedule) {
+        data class DailySchedule(val timeZone: String, val checkpoints: List<Checkpoint>) {
+            data class Checkpoint(val at: String, val plusPostponeDuration: String)
         }
     }
 
