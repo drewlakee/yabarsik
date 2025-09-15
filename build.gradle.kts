@@ -56,14 +56,17 @@ tasks.register<Exec>("ycDeployFunction") {
         "--function-name=yabarsik",
         "--runtime=kotlin20",
         "--entrypoint=com.github.drewlakee.yabarsik.YcHandler",
-        "--memory=128m",
+        "--memory=1024m",
         "--execution-timeout=5m",
         "--source-path=ycFunction.zip",
         "--service-account-id=ajeduks5d1ag7q1rkbo6",
         "--environment=CONFIGURATION_S3_OBJECT_ID=configuration.yml,CONFIGURATION_S3_BUCKET=yabarsik",
         "--secret=environment-variable=TELEGRAM_TOKEN,id=e6qunf2om3830utk4li6,key=token",
         "--secret=environment-variable=AWS_ACCESS_KEY_ID,id=e6q7hvehrvtsf655otla,key=key-identifier",
-        "--secret=environment-variable=AWS_SECRET_ACCESS_KEY,id=e6q7hvehrvtsf655otla,key=secret-key"
+        "--secret=environment-variable=AWS_SECRET_ACCESS_KEY,id=e6q7hvehrvtsf655otla,key=secret-key",
+        "--secret=environment-variable=YANDEX_CLOUD_LLM_API_KEY,id=e6qeql4qbf61n4hcjkf4,key=secret-key",
+        "--secret=environment-variable=VK_SERVICE_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=service",
+        "--secret=environment-variable=VK_COMMUNITY_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=community",
     )
 }
 
