@@ -44,7 +44,7 @@ fun YandexLlmModelsApi.Companion.Http(client: HttpHandler) = object : YandexLlmM
         action.toResult(http(action.toRequest()))
 }
 
-enum class LlmMessageRole(@field:JsonValue val value: String) {
+enum class CommonLlmMessageRole(@field:JsonValue val value: String) {
     SYSTEM("system"),
     USER("user"),
     ASSISTANT("assistant"),
