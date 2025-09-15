@@ -7,6 +7,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.drewlakee.yabarsik.BarsikEnvironment.YANDEX_CLOUD_LLM_API_KEY
 import dev.forkhandles.result4k.Result4k
+import org.http4k.client.OkHttp
 import org.http4k.cloudnative.RemoteRequestFailed
 import org.http4k.connect.Action
 import org.http4k.core.Body
@@ -34,12 +35,12 @@ interface YandexLlmModelsApi {
     companion object
 }
 
-fun YandexLlmModelsApi.Companion.Http(client: HttpHandler) = object : YandexLlmModelsApi {
+fun YandexLlmModelsApi.Companion.Http() = object : YandexLlmModelsApi {
     private val http = SetBaseUriFrom(Uri.of("https://llm.api.cloud.yandex.net"))
         .then(SetHeader("Content-Type", "application/json"))
         .then(SetHeader("Accept", "application/json"))
         .then(SetHeader("Authorization", "Api-Key $YANDEX_CLOUD_LLM_API_KEY"))
-        .then(client)
+        .then(OkHttp())
 
     override fun <R : Any> invoke(action: YandexLlmModelsApiAction<R>): Result4k<R, RemoteRequestFailed> =
         action.toResult(http(action.toRequest()))

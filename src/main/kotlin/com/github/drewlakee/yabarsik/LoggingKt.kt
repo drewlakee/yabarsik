@@ -10,8 +10,10 @@ fun logInfo(message: String) {
     println("""{"level":"INFO","message":"$message"}""")
 }
 
-fun logError(throwable: Throwable) {
-    with(throwable) {
-        System.err.println("""{"level":"ERROR","message":"$message; ${formatedStackTraceString()}"}""")
+fun logError(throwable: Throwable?) {
+    if (throwable != null) {
+        with(throwable) {
+            System.err.println("""{"level":"ERROR","message":"$message; ${formatedStackTraceString()}"}""")
+        }
     }
 }

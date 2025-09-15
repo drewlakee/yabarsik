@@ -42,6 +42,12 @@ data class BarsikConfiguration(
         }
     }
 
-    fun toYamlString(): String = yamlMapper.writeValueAsString(configuration)
-        .replace("---", "")
+    fun toYamlString(): String = runCatching {
+        yamlMapper.writeValueAsString(configuration)
+            .replace("---", "")
+    }
+        .onFailure { logError(it) }
+        .getOrElse {
+            "FAILED TO PARSE YAML" + if (it.message != null) ": ${it.message}" else ""
+        }
 }
