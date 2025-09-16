@@ -1,6 +1,6 @@
 package com.github.drewlakee.yabarsik.telegram.api
 
-import com.github.drewlakee.yabarsik.BarsikEnvironment.TELEGRAM_TOKEN
+import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.TELEGRAM_TOKEN
 import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k

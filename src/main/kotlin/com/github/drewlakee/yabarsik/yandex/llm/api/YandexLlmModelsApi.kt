@@ -5,13 +5,12 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.github.drewlakee.yabarsik.BarsikEnvironment.YANDEX_CLOUD_LLM_API_KEY
+import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.YANDEX_CLOUD_LLM_API_KEY
 import dev.forkhandles.result4k.Result4k
 import org.http4k.client.OkHttp
 import org.http4k.cloudnative.RemoteRequestFailed
 import org.http4k.connect.Action
 import org.http4k.core.Body
-import org.http4k.core.HttpHandler
 import org.http4k.core.Uri
 import org.http4k.core.then
 import org.http4k.filter.ClientFilters.SetBaseUriFrom

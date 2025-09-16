@@ -1,4 +1,4 @@
-package com.github.drewlakee.yabarsik
+package com.github.drewlakee.yabarsik.configuration
 
 object BarsikEnvironment {
     val TELEGRAM_TOKEN = "TELEGRAM_TOKEN".getOrThrow()

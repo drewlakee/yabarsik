@@ -4,15 +4,20 @@ package com.github.drewlakee.yabarsik.vk.api
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonValue
-import com.github.drewlakee.yabarsik.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
+import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
+import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
+import dev.forkhandles.result4k.map
+import dev.forkhandles.result4k.peekFailure
+import dev.forkhandles.result4k.recover
 import org.http4k.cloudnative.RemoteRequestFailed
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import kotlin.random.Random
 
 data class VkWallposts(
     val response: VkWallpostsResponse,
@@ -32,20 +37,16 @@ data class VkWallposts(
                 val photo: VkWallpostsAttachmentPhoto?,
                 val audio: VkWallpostsAttachmentAudio?,
             ) {
-
-                enum class VkWallpostsAttachmentType(@get:JsonValue val type: String) {
-                    PHOTO("photo"),
-                    AUDIO("audio"),
-                    @JsonEnumDefaultValue
-                    UNKNOWN("unknown"),
-                }
-
                 data class VkWallpostsAttachmentPhoto(
                     val id: Int,
                     @field:JsonProperty("owner_id") val ownerId: Int,
                     @field:JsonProperty("orig_photo") val origPhoto: VkWallpostsAttachmentPhotoOrig,
                 ) {
-                    data class VkWallpostsAttachmentPhotoOrig(val height: Int, val width: Int, val url: String)
+                    data class VkWallpostsAttachmentPhotoOrig(
+                        val height: Int,
+                        val width: Int,
+                        val url: String,
+                    )
                 }
 
                 data class VkWallpostsAttachmentAudio(
@@ -59,20 +60,92 @@ data class VkWallposts(
     }
 }
 
-data class GetWallposts(val domain: String, val offset: Int = 0, val count: Int = 100): VkApiAction<VkWallposts> {
-    override fun toRequest(): Request = Request(Method.POST, "/method/wall.get")
-        .body(
-            listOf(
-                "access_token=$VK_SERVICE_ACCESS_TOKEN",
-                "domain=$domain",
-                "offset=$offset",
-                "count=$count",
-                "v=5.199",
-            ).filter { it != null }.joinToString(separator = "&")
-        )
+data class GetWallposts(
+    val domain: String,
+    val offset: Int = 0,
+    val count: Int = 100,
+) : VkApiAction<VkWallposts> {
+    override fun toRequest(): Request =
+        Request(Method.POST, "/method/wall.get")
+            .body(
+                listOf(
+                    "access_token=$VK_SERVICE_ACCESS_TOKEN",
+                    "domain=$domain",
+                    "offset=${Math.max(0, offset)}",
+                    "count=${Math.max(0, count.coerceAtMost(100))}",
+                    "v=5.199",
+                ).filter { it != null }.joinToString(separator = "&"),
+            )
 
-    override fun toResult(response: Response): Result4k<VkWallposts, RemoteRequestFailed> = when (response.status) {
-        Status.OK -> Success(VkApiAction.jsonTo(response.body))
-        else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
-    }
+    override fun toResult(response: Response): Result4k<VkWallposts, RemoteRequestFailed> =
+        when (response.status) {
+            Status.OK -> Success(VkApiAction.jsonTo(response.body))
+            else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
+        }
 }
+
+enum class VkWallpostsAttachmentType(
+    @get:JsonValue val type: String,
+) {
+    PHOTO("photo"),
+    AUDIO("audio"),
+
+    @JsonEnumDefaultValue
+    UNKNOWN("unknown"),
+}
+
+fun VkApi.getTotalWallpostsCount(domain: String): Result4k<Int, RemoteRequestFailed> =
+    invoke(
+        GetWallposts(
+            domain = domain,
+            offset = 0,
+            count = 0,
+        ),
+    ).map { it.response.count }
+
+fun VkApi.takeAttachmentsRandomly(
+    domain: String,
+    count: Int,
+    type: VkWallpostsAttachmentType,
+): Result4k<
+    List<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>,
+    RemoteRequestFailed,
+> =
+    getTotalWallpostsCount(domain)
+        .map { totalWallpostsCount ->
+            buildList {
+                for (limit in 1..10) {
+                    invoke(
+                        GetWallposts(
+                            domain = domain,
+                            offset =
+                                with(Random.nextInt(0, totalWallpostsCount)) {
+                                    if (this + count > totalWallpostsCount) {
+                                        return@with this - (this + count - totalWallpostsCount)
+                                    }
+
+                                    this
+                                },
+                            count = 100,
+                        ),
+                    ).peekFailure { logError(it.cause) }
+                        .map {
+                            it.response.items
+                                .asSequence()
+                                .map { wallpost ->
+                                    wallpost.attachments.firstOrNull { attachment ->
+                                        attachment.type == type
+                                    }
+                                }.filterNotNull()
+                                .toList()
+                        }.recover { listOf() }
+                        .forEach { attachment ->
+                            if (this.size < count) {
+                                add(attachment)
+                            } else {
+                                return@buildList
+                            }
+                        }
+                }
+            }
+        }.peekFailure { logError(it.cause) }

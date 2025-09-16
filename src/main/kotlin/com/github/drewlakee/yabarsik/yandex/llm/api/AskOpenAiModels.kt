@@ -9,7 +9,7 @@ import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
 
-data class OpenAiModelsMessage(
+data class AskOpenAiModelsMessage(
     val role: CommonLlmMessageRole,
     val content: List<AskOpenAiModelsMessageContent>,
 )
@@ -29,13 +29,14 @@ data class AskOpenAiModelsImageUrlContent(val url: String): AskOpenAiModelsMessa
 data class AskOpenAiModels(
     val folderId: String,
     val modelVersion: String,
-    val messages: List<OpenAiModelsMessage>,
+    val messages: List<AskOpenAiModelsMessage>,
+    val temperature: Float? = null,
 ) : YandexLlmModelsApiAction<OpenAiModelsResponse> {
     override fun toRequest() = Request(Method.POST, "/v1/chat/completions")
         .body(
             openAiModelsRequest {
                 model = "gpt://$folderId/${modelVersion}"
-                temperature = 0.3f
+                requestTemperature = temperature ?: 0.3f
                 requestMessages = messages.map {
                     MutableOpenAiModelsMessage(
                         role = it.role,

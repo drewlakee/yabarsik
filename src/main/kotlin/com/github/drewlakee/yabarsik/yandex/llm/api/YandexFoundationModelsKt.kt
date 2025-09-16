@@ -28,7 +28,7 @@ data class YandexFoundationModelsRequest(
 class YandexLlmRequestBuilder(
     var modelUri: String? = null,
     var stream: Boolean = false,
-    var temperature: Float = 0.6f,
+    var requestTemperature: Float = 0.6f,
     var maxTokens: Int = 2000,
     var reasoningEnabled: Boolean = false,
     var requestMessages: MutableList<YandexFoundationModelsMutableMessage> = mutableListOf(),
@@ -75,7 +75,7 @@ fun yandexFoundationModelsRequest(builderAction: YandexLlmRequestBuilder.() -> U
         modelUri = builder.modelUri!!,
         completionOptions = YandexFoundationModelsRequest.CompletionOptions(
             stream = builder.stream,
-            temperature = builder.temperature,
+            temperature = builder.requestTemperature,
             maxTokens = builder.maxTokens,
             reasoningOptions = YandexFoundationModelsRequest.CompletionOptions.ReasoningOptions(
                 mode = if (builder.reasoningEnabled) {

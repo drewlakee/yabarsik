@@ -4,9 +4,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.github.drewlakee.yabarsik.BarsikConfiguration
-import com.github.drewlakee.yabarsik.BarsikEnvironment.CONFIGURATION_S3_BUCKET
-import com.github.drewlakee.yabarsik.BarsikEnvironment.CONFIGURATION_S3_OBJECT_ID
+import com.github.drewlakee.yabarsik.configuration.BarsikConfiguration
+import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.CONFIGURATION_S3_BUCKET
+import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.CONFIGURATION_S3_OBJECT_ID
+import com.github.drewlakee.yabarsik.configuration.Configuration
 import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
@@ -44,7 +45,7 @@ fun YandexS3Api.Companion.Http() = object : YandexS3Api {
                     .build()
             ).let {
                 yamlMapper
-                    .readValue(it.readAllBytes(), BarsikConfiguration.Configuration::class.java)
+                    .readValue(it.readAllBytes(), Configuration::class.java)
             }
         }.let {
             if (it.isSuccess) {

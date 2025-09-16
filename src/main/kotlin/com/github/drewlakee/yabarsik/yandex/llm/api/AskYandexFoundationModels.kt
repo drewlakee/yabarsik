@@ -18,13 +18,14 @@ data class AskYandexFoundationModels(
     val folderId: String,
     val modelVersion: String,
     val messages: List<AskYandexFoundationModelsMessage>,
+    val temperature: Float? = null,
 ): YandexLlmModelsApiAction<YandexFoundationModelsResponse> {
     override fun toRequest() = Request(Method.POST, "/foundationModels/v1/completion")
         .body(
             yandexFoundationModelsRequest {
                 modelUri = "gpt://$folderId/$modelVersion"
                 stream = false
-                temperature = 1.0f
+                requestTemperature = temperature ?: 0.3f
                 maxTokens = 2000
                 reasoningEnabled = false
                 requestMessages += messages.map { YandexFoundationModelsMutableMessage(it.role, it.text) }
