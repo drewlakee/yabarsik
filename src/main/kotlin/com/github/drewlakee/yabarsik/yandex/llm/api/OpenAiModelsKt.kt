@@ -5,6 +5,7 @@ import com.github.drewlakee.yabarsik.yandex.llm.api.OpenAiModelsRequest.Message.
 
 data class OpenAiModelsRequest(
     val model: String,
+    val temperature: Float,
     val messages: List<Message>,
 ) {
     data class Message(
@@ -49,6 +50,7 @@ data class OpenAiModelsResponse(
 
 data class MutableOpenAiModelsRequest(
     var model: String = "",
+    var temperature: Float = 0.3f,
     var requestMessages: List<MutableOpenAiModelsMessage> = mutableListOf(),
 )
 
@@ -67,6 +69,7 @@ fun openAiModelsRequest(builderAction: MutableOpenAiModelsRequest.() -> Unit): O
     val builder = MutableOpenAiModelsRequest().apply(builderAction)
     return OpenAiModelsRequest(
         model = builder.model,
+        temperature = builder.temperature,
         messages = builder.requestMessages.map {
             OpenAiModelsRequest.Message(
                 role = it.role,

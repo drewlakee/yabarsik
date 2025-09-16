@@ -18,7 +18,7 @@ sealed interface AskOpenAiModelsMessageContent {
     fun type(): String
 }
 
-data class AskOpenAiModelsTextMessageContent(val text: String): AskOpenAiModelsMessageContent {
+data class AskOpenAiModelsTextContent(val text: String): AskOpenAiModelsMessageContent {
     override fun type(): String = "text"
 }
 
@@ -35,12 +35,13 @@ data class AskOpenAiModels(
         .body(
             openAiModelsRequest {
                 model = "gpt://$folderId/${modelVersion}"
+                temperature = 0.3f
                 requestMessages = messages.map {
                     MutableOpenAiModelsMessage(
                         role = it.role,
                         content = it.content.map {
                             when (it) {
-                                is AskOpenAiModelsTextMessageContent -> MutableOpenAiModelsMessageContent(
+                                is AskOpenAiModelsTextContent -> MutableOpenAiModelsMessageContent(
                                     type = it.type(),
                                     text = it.text,
                                 )
