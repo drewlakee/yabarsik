@@ -1,5 +1,6 @@
 package com.github.drewlakee.yabarsik.yandex.llm.api
 
+import com.github.drewlakee.yabarsik.yandex.llm.api.OpenAiModelsRequest.Message.Content
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -34,27 +35,27 @@ data class AskOpenAiModels(
 ) : YandexLlmModelsApiAction<OpenAiModelsResponse> {
     override fun toRequest() = Request(Method.POST, "/v1/chat/completions")
         .body(
-            openAiModelsRequest {
-                model = "gpt://$folderId/${modelVersion}"
-                requestTemperature = temperature ?: 0.3f
-                requestMessages = messages.map {
-                    MutableOpenAiModelsMessage(
+            OpenAiModelsRequest(
+                model = "gpt://$folderId/${modelVersion}",
+                temperature = temperature ?: 0.3f,
+                messages = messages.map {
+                    OpenAiModelsRequest.Message(
                         role = it.role,
                         content = it.content.map {
                             when (it) {
-                                is AskOpenAiModelsTextContent -> MutableOpenAiModelsMessageContent(
+                                is AskOpenAiModelsTextContent -> Content(
                                     type = it.type(),
                                     text = it.text,
                                 )
-                                is AskOpenAiModelsImageUrlContent -> MutableOpenAiModelsMessageContent(
+                                is AskOpenAiModelsImageUrlContent -> Content(
                                     type = it.type(),
-                                    imageUrl = it.url,
+                                    imageUrl = Content.ImageUrl(it.url)
                                 )
                             }
-                        }
+                        },
                     )
                 }
-            }.let { YandexLlmModelsApiAction.toJsonString(it) }
+            ).let { YandexLlmModelsApiAction.toJsonString(it) }
         )
 
     override fun toResult(response: Response): Result4k<OpenAiModelsResponse, RemoteRequestFailed> = when(response.status) {

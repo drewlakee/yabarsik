@@ -1,7 +1,6 @@
 package com.github.drewlakee.yabarsik.yandex.llm.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.github.drewlakee.yabarsik.yandex.llm.api.OpenAiModelsRequest.Message.Content
 
 data class OpenAiModelsRequest(
     val model: String,
@@ -14,8 +13,8 @@ data class OpenAiModelsRequest(
     ) {
         data class Content(
             val type: String,
-            val text: String?,
-            @get:JsonProperty("image_url") val imageUrl: ImageUrl?,
+            val text: String? = null,
+            @get:JsonProperty("image_url") val imageUrl: ImageUrl? = null,
         ) {
             data class ImageUrl(val url: String)
         }
@@ -45,42 +44,5 @@ data class OpenAiModelsResponse(
         @field:JsonProperty("prompt_tokens") val promptTokens: Int,
         @field:JsonProperty("total_tokens") val totalTokens: Int,
         @field:JsonProperty("completion_tokens") val completionTokens: Int,
-    )
-}
-
-data class MutableOpenAiModelsRequest(
-    var model: String = "",
-    var requestTemperature: Float = 0.3f,
-    var requestMessages: List<MutableOpenAiModelsMessage> = mutableListOf(),
-)
-
-data class MutableOpenAiModelsMessage(
-    var role: CommonLlmMessageRole,
-    val content: List<MutableOpenAiModelsMessageContent>,
-)
-
-data class MutableOpenAiModelsMessageContent(
-    val type: String,
-    val text: String? = null,
-    val imageUrl: String? = null,
-)
-
-fun openAiModelsRequest(builderAction: MutableOpenAiModelsRequest.() -> Unit): OpenAiModelsRequest {
-    val builder = MutableOpenAiModelsRequest().apply(builderAction)
-    return OpenAiModelsRequest(
-        model = builder.model,
-        temperature = builder.requestTemperature,
-        messages = builder.requestMessages.map {
-            OpenAiModelsRequest.Message(
-                role = it.role,
-                content = it.content.map {
-                    Content(
-                        type = it.type,
-                        text = it.text,
-                        imageUrl = it.imageUrl?.let { Content.ImageUrl(it) }
-                    )
-                },
-            )
-        }
     )
 }

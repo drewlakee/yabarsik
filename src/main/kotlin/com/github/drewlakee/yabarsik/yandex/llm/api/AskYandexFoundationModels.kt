@@ -22,14 +22,27 @@ data class AskYandexFoundationModels(
 ): YandexLlmModelsApiAction<YandexFoundationModelsResponse> {
     override fun toRequest() = Request(Method.POST, "/foundationModels/v1/completion")
         .body(
-            yandexFoundationModelsRequest {
-                modelUri = "gpt://$folderId/$modelVersion"
-                stream = false
-                requestTemperature = temperature ?: 0.3f
-                maxTokens = 2000
-                reasoningEnabled = false
-                requestMessages += messages.map { YandexFoundationModelsMutableMessage(it.role, it.text) }
-            }.let { YandexLlmModelsApiAction.toJsonString(it) }
+            YandexFoundationModelsRequest(
+                modelUri = "gpt://$folderId/$modelVersion",
+                completionOptions = YandexFoundationModelsRequest.CompletionOptions(
+                    stream = false,
+                    temperature = temperature ?: 0.3f,
+                    maxTokens = 2000,
+                    reasoningOptions = YandexFoundationModelsRequest.CompletionOptions.ReasoningOptions(
+                        mode = if (false) {
+                            YandexFoundationModelsRequest.CompletionOptions.ReasoningOptions.Mode.ENABLED
+                        } else {
+                            YandexFoundationModelsRequest.CompletionOptions.ReasoningOptions.Mode.DISABLED
+                        }
+                    )
+                ),
+                messages = messages.map {
+                    YandexFoundationModelsRequest.YandexFoundationModelsMessage(
+                        role = it.role,
+                        text = it.text
+                    )
+                }
+            ).let { YandexLlmModelsApiAction.toJsonString(it) }
         )
 
     override fun toResult(response: Response): Result4k<YandexFoundationModelsResponse, RemoteRequestFailed> = when(response.status) {

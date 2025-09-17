@@ -1,10 +1,6 @@
 package com.github.drewlakee.yabarsik.scenario.vk
 
 import com.github.drewlakee.yabarsik.Barsik
-import com.github.drewlakee.yabarsik.Barsik.Companion.askMultiModalGpt
-import com.github.drewlakee.yabarsik.Barsik.Companion.askTextGpt
-import com.github.drewlakee.yabarsik.Barsik.Companion.sendTelegramMessage
-import com.github.drewlakee.yabarsik.Barsik.Companion.takeVkAttachmentsRandomly
 import com.github.drewlakee.yabarsik.BarsikGptTextMessage
 import com.github.drewlakee.yabarsik.configuration.Content
 import com.github.drewlakee.yabarsik.scenario.BarsikScenario
@@ -38,12 +34,14 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         }
 
         val musicAttachments = barsik.takeVkAttachmentsRandomly(
+            // TODO Размазать провайдеров
             domain = mediaProviders[Content.Provider.Media.MUSIC]!!.getRandomProvider().domain,
             count = barsik.configuration.content.settings.musicAttachmentsCollectorSize,
             type = VkWallpostsAttachmentType.AUDIO
         )
 
         val photoAttachments = barsik.takeVkAttachmentsRandomly(
+            // TODO Размазать провайдеров
             domain = mediaProviders[Content.Provider.Media.IMAGES]!!.getRandomProvider().domain,
             count = barsik.configuration.content.settings.imagesAttachmentsCollectorSize,
             type = VkWallpostsAttachmentType.PHOTO
@@ -82,7 +80,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     add(
                         BarsikGptTextMessage(
                             role = CommonLlmMessageRole.SYSTEM,
-                            text = barsik.configuration.llm.audioPromt.systemInstruction,
+                            text = barsik.configuration.llm.photoPromt.systemInstruction,
                         )
                     )
 

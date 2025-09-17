@@ -25,20 +25,6 @@ data class YandexFoundationModelsRequest(
     )
 }
 
-class YandexLlmRequestBuilder(
-    var modelUri: String? = null,
-    var stream: Boolean = false,
-    var requestTemperature: Float = 0.6f,
-    var maxTokens: Int = 2000,
-    var reasoningEnabled: Boolean = false,
-    var requestMessages: MutableList<YandexFoundationModelsMutableMessage> = mutableListOf(),
-)
-
-class YandexFoundationModelsMutableMessage(
-    var role: CommonLlmMessageRole,
-    var text: String,
-)
-
 data class YandexFoundationModelsResponse(
     val result: Result,
 ) {
@@ -66,30 +52,4 @@ data class YandexFoundationModelsResponse(
             data class CompletionTokensDetails(val reasoningTokens: String)
         }
     }
-}
-
-fun yandexFoundationModelsRequest(builderAction: YandexLlmRequestBuilder.() -> Unit): YandexFoundationModelsRequest {
-    val builder = YandexLlmRequestBuilder()
-    builderAction(builder)
-    return YandexFoundationModelsRequest(
-        modelUri = builder.modelUri!!,
-        completionOptions = YandexFoundationModelsRequest.CompletionOptions(
-            stream = builder.stream,
-            temperature = builder.requestTemperature,
-            maxTokens = builder.maxTokens,
-            reasoningOptions = YandexFoundationModelsRequest.CompletionOptions.ReasoningOptions(
-                mode = if (builder.reasoningEnabled) {
-                    YandexFoundationModelsRequest.CompletionOptions.ReasoningOptions.Mode.ENABLED
-                } else {
-                    YandexFoundationModelsRequest.CompletionOptions.ReasoningOptions.Mode.DISABLED
-                }
-            )
-        ),
-        messages = builder.requestMessages.map {
-            YandexFoundationModelsRequest.YandexFoundationModelsMessage(
-                role = it.role,
-                text = it.text
-            )
-        }
-    )
 }

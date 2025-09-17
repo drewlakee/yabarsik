@@ -1,7 +1,6 @@
 // https://yandex.cloud/ru/docs/functions/concepts/function-invoke
 package com.github.drewlakee.yabarsik
 
-import com.github.drewlakee.yabarsik.Barsik.Companion.sendTelegramMessage
 import com.github.drewlakee.yabarsik.scenario.play
 import com.github.drewlakee.yabarsik.scenario.vk.DailyScheduleWatching
 import com.github.drewlakee.yabarsik.telegram.api.Http
