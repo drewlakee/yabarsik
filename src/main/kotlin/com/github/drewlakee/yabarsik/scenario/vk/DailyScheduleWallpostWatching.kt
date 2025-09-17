@@ -316,9 +316,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             message = """
                 Ура! Я неплохо потрудился и вот, что у меня вышло, пойду отдыхать...
                 
-                ${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes.last().url} 
-                
-                ${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}
+                [картиночка](${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes.last().url}) и _${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}_
                 
                 Положил это тут: https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId}
             """.trimIndent(),

@@ -24,6 +24,7 @@ fun TelegramApi.Companion.Http() = object : TelegramApi {
             SendMessage.builder()
                 .text(message)
                 .chatId(chatId)
+                .parseMode(ParseMode.MARKDOWN)
                 .build()
         )
     }.let {
