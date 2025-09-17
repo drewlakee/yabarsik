@@ -40,8 +40,14 @@ data class VkWallposts(
                 data class VkWallpostsAttachmentPhoto(
                     val id: Int,
                     @field:JsonProperty("owner_id") val ownerId: Int,
-                    @field:JsonProperty("orig_photo") val origPhoto: VkWallpostsAttachmentPhotoOrig,
+                    val sizes: List<Size>,
+                    @field:JsonProperty("orig_photo") val origPhoto: VkWallpostsAttachmentPhotoOrig?,
                 ) {
+                    data class Size(
+                        val height: Int,
+                        val width: Int,
+                        val url: String,
+                    )
                     data class VkWallpostsAttachmentPhotoOrig(
                         val height: Int,
                         val width: Int,
@@ -79,7 +85,15 @@ data class GetWallposts(
 
     override fun toResult(response: Response): Result4k<VkWallposts, RemoteRequestFailed> =
         when (response.status) {
-            Status.OK -> Success(VkApiAction.jsonTo(response.body))
+            Status.OK -> runCatching { VkApiAction.jsonTo<VkWallposts>(response.body) }
+                .let {
+                    if (it.isSuccess) {
+                        Success(it.getOrNull()!!)
+                    } else {
+                        logError(IllegalArgumentException("status=${response.status}, body=${response.bodyString()}", it.exceptionOrNull()))
+                        Failure(RemoteRequestFailed(response.status, response.bodyString()))
+                    }
+                }
             else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
         }
 }

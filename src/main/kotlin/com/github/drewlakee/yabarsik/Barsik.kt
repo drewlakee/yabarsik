@@ -2,8 +2,12 @@ package com.github.drewlakee.yabarsik
 
 import com.github.drewlakee.yabarsik.configuration.BarsikConfiguration
 import com.github.drewlakee.yabarsik.configuration.Llm
+import com.github.drewlakee.yabarsik.images.GetImage
+import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
+import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
+import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostsAttachmentType
 import com.github.drewlakee.yabarsik.vk.api.takeAttachmentsRandomly
 import com.github.drewlakee.yabarsik.yandex.llm.api.AskOpenAiModels
@@ -23,20 +27,28 @@ import org.http4k.cloudnative.RemoteRequestFailed
 
 class Barsik(
     private val telegramApi: TelegramApi,
-    private val yandexS3Api: YandexS3Api,
     private val yandexLlmModelsApi: YandexLlmModelsApi,
     private val vkApi: VkApi,
+    private val imagesApi: ImagesApi,
+    yandexS3Api: YandexS3Api,
 ) {
-    val configuration: BarsikConfiguration =
-        yandexS3Api
+    val configuration: BarsikConfiguration = yandexS3Api
             .getBarsikConfiguration()
             .peekFailure { logError(it) }
             .orThrow()
+    
+    fun getImage(url: String) = 
+        imagesApi.invoke(
+            GetImage(
+                url = url
+            )
+        )
 
     fun sendTelegramMessage(message: String) =
         telegramApi.sendMessage(
             chatId = configuration.telegram.report.chatId,
             message = message,
+
         )
 
     fun takeVkAttachmentsRandomly(
@@ -47,6 +59,13 @@ class Barsik(
         domain = domain,
         count = count,
         type = type,
+    )
+    
+    fun createVkWallpost(attachments: List<VkPostWallpostAttachment>) = vkApi.invoke(
+        PostWallpost(
+            ownerId = configuration.wallposts.communityId,
+            attachments = attachments,
+        )
     )
 
     fun askTextGpt(
@@ -89,6 +108,7 @@ class Barsik(
                         AskOpenAiModels(
                             folderId = configuration.llm.folderId,
                             modelVersion = configuration.llm.textGtp.model,
+                            temperature = temperature,
                             messages =
                                 buildList {
                                     messages

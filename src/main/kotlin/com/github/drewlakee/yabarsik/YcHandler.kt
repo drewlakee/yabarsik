@@ -1,6 +1,8 @@
 // https://yandex.cloud/ru/docs/functions/concepts/function-invoke
 package com.github.drewlakee.yabarsik
 
+import com.github.drewlakee.yabarsik.images.Http
+import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.scenario.play
 import com.github.drewlakee.yabarsik.scenario.vk.DailyScheduleWatching
 import com.github.drewlakee.yabarsik.telegram.api.Http
@@ -31,6 +33,7 @@ class YcHandler : YcFunction<Request, Response> {
                 yandexS3Api = YandexS3Api.Http(),
                 yandexLlmModelsApi = YandexLlmModelsApi.Http(),
                 vkApi = VkApi.Http(),
+                imagesApi = ImagesApi.Http(),
             )
         }
 
@@ -40,15 +43,11 @@ class YcHandler : YcFunction<Request, Response> {
         }
 
         with(barsik.getOrThrow()) {
-            play(DailyScheduleWatching()).peekFailure { logError(it.cause) }
-
-            sendTelegramMessage(
-                """Привет\! Меня только что разбудили, держу в курсе\. Вот моя текущая конфигурация:
-                ```log
-                ${configuration.toYamlString()}
-                ```
-                """
-            )
+            play(DailyScheduleWatching()).run {
+                if (sendTelegramMessage()) {
+                    this@with.sendTelegramMessage(message())
+                }
+            }
         }
 
         return Response.Status.OK

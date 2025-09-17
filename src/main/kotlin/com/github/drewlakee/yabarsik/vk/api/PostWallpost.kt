@@ -19,7 +19,7 @@ data class VkPostWallpost(val response: VkPostWallpostResponse) {
 }
 
 data class VkPostWallpostAttachment(
-    val type: String,
+    val type: VkWallpostsAttachmentType,
     val ownerId: Int,
     val mediaId: Int,
 ) {

@@ -52,7 +52,7 @@ data class Telegram(val report: Report) {
     data class Report(val chatId: String)
 }
 
-data class Wallposts(val communityId: String, val dailySchedule: DailySchedule) {
+data class Wallposts(val communityId: Int, val domain: String, val dailySchedule: DailySchedule) {
     data class DailySchedule(val timeZone: String, val checkpoints: List<Checkpoint>) {
         data class Checkpoint(val at: String, val plusPostponeDuration: String)
     }
@@ -61,7 +61,10 @@ data class Wallposts(val communityId: String, val dailySchedule: DailySchedule) 
 data class Content(val settings: Settings, val providers: List<Provider>) {
     data class Settings(
         val musicAttachmentsCollectorSize: Int,
+        val takeMusicAttachmentsPerProvider: Int,
         val imagesAttachmentsCollectorSize: Int,
+        val takeImagesAttachmentsPerProvider: Int,
+        val musicLlmApprovalThreshold: Float,
     )
 
     data class Provider(
