@@ -318,7 +318,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 
                 [картиночка](${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes.last().url}) и _${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}_
                 
-                Положил это тут: https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId}
+                Положил это на [страницу](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId})!
             """.trimIndent(),
             sendTelegram = true,
         )
