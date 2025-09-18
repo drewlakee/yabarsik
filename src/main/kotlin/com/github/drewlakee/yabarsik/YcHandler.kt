@@ -13,7 +13,6 @@ import com.github.drewlakee.yabarsik.yandex.llm.api.Http
 import com.github.drewlakee.yabarsik.yandex.llm.api.YandexLlmModelsApi
 import com.github.drewlakee.yabarsik.yandex.s3.api.Http
 import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
-import dev.forkhandles.result4k.peekFailure
 import yandex.cloud.sdk.functions.Context
 import yandex.cloud.sdk.functions.YcFunction
 
@@ -29,6 +28,7 @@ class YcHandler : YcFunction<Request, Response> {
     override fun handle(request: Request, context: Context): Response {
         val barsik = runCatching {
             Barsik(
+                context = context,
                 telegramApi = TelegramApi.Http(),
                 yandexS3Api = YandexS3Api.Http(),
                 yandexLlmModelsApi = YandexLlmModelsApi.Http(),
@@ -45,7 +45,9 @@ class YcHandler : YcFunction<Request, Response> {
         with(barsik.getOrThrow()) {
             play(DailyScheduleWatching()).run {
                 if (sendTelegramMessage()) {
-                    this@with.sendTelegramMessage(message())
+                    this@with.sendTelegramMessage(
+                        message() + "\n\n${getTelegramFormattedTraceLinK()}"
+                    )
                 }
             }
         }

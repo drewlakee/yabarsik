@@ -42,7 +42,13 @@ data class PostWallpost(
         )
 
     override fun toResult(response: Response): Result4k<VkPostWallpost, RemoteRequestFailed> = when(response.status) {
-        Status.OK -> Success(VkApiAction.jsonTo(response.body))
+        Status.OK -> runCatching { VkApiAction.jsonTo<VkPostWallpost>(response.body) }.let {
+            if (it.isSuccess) {
+                Success(it.getOrNull()!!)
+            } else {
+                Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            }
+        }
         else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
     }
 }

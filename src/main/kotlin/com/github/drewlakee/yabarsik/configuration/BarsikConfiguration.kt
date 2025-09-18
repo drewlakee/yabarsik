@@ -11,6 +11,7 @@ data class BarsikConfiguration(
     val wallposts = configuration.wallposts
     val content = configuration.content
     val llm = configuration.llm
+    val cloud = configuration.cloud
 
     fun toYamlString(): String = runCatching {
         yamlMapper.writeValueAsString(configuration)
@@ -24,6 +25,7 @@ data class BarsikConfiguration(
 
 data class Configuration(
     val wallposts: Wallposts,
+    val cloud: Cloud,
     val llm: Llm,
     val content: Content,
     val telegram: Telegram,
@@ -46,6 +48,12 @@ data class Llm(
     data class MultiModalGpt(val model: String, val api: Api)
     data class AudioPromt(val temperature: Float, val systemInstruction: String)
     data class PhotoPromt(val temperature: Float, val systemInstruction: String)
+}
+
+data class Cloud(val function: Function) {
+    data class Function(
+        val folderId: String,
+    )
 }
 
 data class Telegram(val report: Report) {

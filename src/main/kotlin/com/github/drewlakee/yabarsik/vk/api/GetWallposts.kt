@@ -17,7 +17,10 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import java.util.LinkedList
+import kotlin.collections.removeLast
 import kotlin.random.Random
+import kotlin.sequences.toMutableList
 
 data class VkWallposts(
     val response: VkWallpostsResponse,
@@ -60,6 +63,7 @@ data class VkWallposts(
                     @field:JsonProperty("owner_id") val ownerId: Int,
                     val artist: String,
                     val title: String,
+                    val url: String,
                 )
             }
         }
@@ -144,14 +148,20 @@ fun VkApi.takeAttachmentsRandomly(
                         ),
                     ).peekFailure { logError(it.cause) }
                         .map {
-                            it.response.items
-                                .asSequence()
-                                .map { wallpost ->
-                                    wallpost.attachments.firstOrNull { attachment ->
-                                        attachment.type == type
+                            val attachments = mutableListOf<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>()
+                            val buffer = it.response.items.toMutableList()
+                            while (attachments.size < count && buffer.isNotEmpty()) {
+                                val j = Random.nextInt(buffer.size)
+                                val last = buffer.removeLast()
+                                val value = if (j < buffer.size) buffer.set(j, last) else last
+                                with(value.attachments.firstOrNull { attachment -> attachment.type == type }) {
+                                    if (this != null) {
+                                        attachments.add(this)
                                     }
-                                }.filterNotNull()
-                                .toList()
+                                }
+                            }
+
+                            attachments
                         }.recover { listOf() }
                         .forEach { attachment ->
                             if (this.size < count) {

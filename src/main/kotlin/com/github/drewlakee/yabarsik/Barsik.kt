@@ -24,8 +24,10 @@ import dev.forkhandles.result4k.map
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.peekFailure
 import org.http4k.cloudnative.RemoteRequestFailed
+import yandex.cloud.sdk.functions.Context
 
 class Barsik(
+    private val context: Context,
     private val telegramApi: TelegramApi,
     private val yandexLlmModelsApi: YandexLlmModelsApi,
     private val vkApi: VkApi,
@@ -43,6 +45,12 @@ class Barsik(
                 url = url
             )
         )
+
+    fun getTraceLink() = "https://console.yandex.cloud/folders/${configuration.cloud.function.folderId}/functions/functions/" +
+        "${context.functionId}/logs?from=now-1h&to=now&size=100&linesInRow=1&resourceTypes=serverless.function" +
+        "&resourceIds=${context.functionId}&query=request_id+%3D+%22${context.requestId}%22"
+
+    fun getTelegramFormattedTraceLinK() = "[Следы Барсика в облаке](${getTraceLink()})"
 
     fun sendTelegramMessage(message: String) =
         telegramApi.sendMessage(

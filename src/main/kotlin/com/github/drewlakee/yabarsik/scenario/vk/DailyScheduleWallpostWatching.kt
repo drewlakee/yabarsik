@@ -23,6 +23,7 @@ import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.peekFailure
 import dev.forkhandles.result4k.recover
 import dev.forkhandles.result4k.valueOrNull
+import yandex.cloud.sdk.functions.Context
 import kotlin.random.Random
 
 class DailyScheduleWatchingResult(
@@ -80,14 +81,16 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         ) {
             return DailyScheduleWatchingResult(
                 success = false,
-                message = "Хм... ты забыл указать мне источники для контента? Ну ладно, тогда я отдыхаю \\uD83D\\uDE3C\"",
+                message = """
+                    Хм... ты забыл указать мне источники для контента? Ну ладно, тогда я отдыхаю \uD83D\uDE3C"
+                """.trimIndent(),
                 sendTelegram = true,
             )
         }
 
         val musicAttachments =
             buildList {
-                while (this.size < barsik.configuration.content.settings.musicAttachmentsCollectorSize) {
+                for (limit in 1..5) {
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = mediaProviders[Content.Provider.Media.MUSIC]!!.getRandomProvider().domain,
@@ -99,6 +102,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             it.forEach {
                                 if (this.size < barsik.configuration.content.settings.musicAttachmentsCollectorSize) {
                                     add(it)
+                                } else {
+                                    return@buildList
                                 }
                             }
                         }
@@ -107,7 +112,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
 
         val photoAttachments =
             buildList {
-                while (this.size < barsik.configuration.content.settings.imagesAttachmentsCollectorSize) {
+                for (limit in 1..5) {
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = mediaProviders[Content.Provider.Media.IMAGES]!!.getRandomProvider().domain,
@@ -119,6 +124,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             it.forEach {
                                 if (this.size < barsik.configuration.content.settings.imagesAttachmentsCollectorSize) {
                                     add(it)
+                                } else {
+                                    return@buildList
                                 }
                             }
                         }
@@ -316,9 +323,13 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             message = """
                 Ура! Я неплохо потрудился и вот, что у меня вышло, пойду отдыхать...
                 
-                [картиночка](${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes.last().url}) и _${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}_
+                [картиночка](${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes.last().url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
                 
                 Положил это на [страницу](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId})!
+                
+                ```дебаг_инфа
+                audioOwnerId=${approvedMusicAttachment.audio.ownerId}
+                ```
             """.trimIndent(),
             sendTelegram = true,
         )
