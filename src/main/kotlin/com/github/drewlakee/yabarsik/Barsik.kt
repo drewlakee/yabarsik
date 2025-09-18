@@ -5,9 +5,11 @@ import com.github.drewlakee.yabarsik.configuration.Llm
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
+import com.github.drewlakee.yabarsik.vk.api.GetUsers
 import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
+import com.github.drewlakee.yabarsik.vk.api.VkUsers
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostsAttachmentType
 import com.github.drewlakee.yabarsik.vk.api.takeAttachmentsRandomly
 import com.github.drewlakee.yabarsik.yandex.llm.api.AskOpenAiModels
@@ -58,6 +60,12 @@ class Barsik(
             message = message,
 
         )
+
+    fun getVkUsers(userIds: List<Int>) = vkApi.invoke(
+        GetUsers(
+            userIds = userIds,
+        )
+    )
 
     fun takeVkAttachmentsRandomly(
         domain: String,

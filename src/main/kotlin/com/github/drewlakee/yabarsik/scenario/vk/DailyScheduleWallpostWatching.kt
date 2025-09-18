@@ -12,6 +12,7 @@ import com.github.drewlakee.yabarsik.logError
 import com.github.drewlakee.yabarsik.scenario.BarsikScenario
 import com.github.drewlakee.yabarsik.scenario.BarsikScenarioResult
 import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
+import com.github.drewlakee.yabarsik.vk.api.VkUsers
 import com.github.drewlakee.yabarsik.vk.api.VkWallposts
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostsAttachmentType
 import com.github.drewlakee.yabarsik.yandex.llm.api.CommonLlmMessageRole
@@ -19,11 +20,11 @@ import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
 import dev.forkhandles.result4k.failureOrNull
+import dev.forkhandles.result4k.map
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.peekFailure
 import dev.forkhandles.result4k.recover
 import dev.forkhandles.result4k.valueOrNull
-import yandex.cloud.sdk.functions.Context
 import kotlin.random.Random
 
 class DailyScheduleWatchingResult(
@@ -88,7 +89,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
-        val musicAttachments =
+        var musicAttachments =
             buildList {
                 for (limit in 1..5) {
                     barsik
@@ -110,7 +111,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 }
             }
 
-        val photoAttachments =
+        var photoAttachments =
             buildList {
                 for (limit in 1..5) {
                     barsik
@@ -131,6 +132,20 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         }
                 }
             }
+
+        val users = photoAttachments.map { it.photo!!.ownerId } + musicAttachments.map { it.audio!!.ownerId }
+        val openSharingAttachmentsUsers = barsik.getVkUsers(users)
+            .peekFailure { logError(it.cause) }
+            .map { it.users }
+            .recover { listOf() }
+            .asSequence()
+            .filter { it.isOpenAccount() }
+            .map { it.id }
+            .toSet()
+
+        // TODO + https://dev.vk.com/ru/method/groups.getById
+        musicAttachments = musicAttachments.filter { it.audio!!.ownerId in openSharingAttachmentsUsers }
+        photoAttachments = photoAttachments.filter { it.photo!!.ownerId in openSharingAttachmentsUsers }
 
         if (musicAttachments.isEmpty()) {
             return DailyScheduleWatchingResult(
@@ -328,6 +343,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 Положил это на [страницу](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId})!
                 
                 ```дебаг_инфа
+                photoOwnerId=${approvedPhotoAttachment.photo.ownerId}
                 audioOwnerId=${approvedMusicAttachment.audio.ownerId}
                 ```
             """.trimIndent(),
@@ -367,3 +383,5 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
 private fun List<Content.Provider>.getRandomProvider() = this[Random.nextInt(size)]
 
 private fun List<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>.getRandomAttachment() = this[Random.nextInt(size)]
+
+private fun VkUsers.User.isOpenAccount() = !isClosed && canSeeAudio == 1 && canAccessClosed
