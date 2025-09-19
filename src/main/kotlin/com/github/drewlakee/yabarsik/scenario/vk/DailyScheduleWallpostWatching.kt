@@ -85,7 +85,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             }
 
         if (currentScheduleCheckpoint == null) {
-            logInfo("Кажется время еще не пришло, спим дальше... мое расписание: ${barsik.configuration.wallposts.dailySchedule.checkpoints}")
+            logInfo("It seems the time has not come yet, let’s sleep some more… my schedule: ${barsik.configuration.wallposts.dailySchedule.checkpoints}")
             return DailyScheduleWatchingResult(success = true)
         }
 
@@ -103,7 +103,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         } ?: false
 
         if (isStillPreviousPostponeCooldownBetweenPosts) {
-            logInfo("Возможно сейчас отложен предыдущий пост, надо подожать... предыдущий ${LocalTime.parse(previousCheckpoint.at)} c кулдауном ${previousCheckpoint.plusPostponeDuration}")
+            logInfo("It’s possible that the previous post has been postponed now, we need to wait… the previous one at  ${LocalTime.parse(previousCheckpoint.at)} with cooldown ${previousCheckpoint.plusPostponeDuration}")
             return DailyScheduleWatchingResult(success = true)
         }
 
@@ -141,8 +141,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val alreadyPostedWallpostsCount = sortedTodayWallposts.count { (localTime, _) -> localTime.isBefore(LocalTime.now(currentZoneId)) }
 
         if (alreadyPostedWallpostsCount > checkpointsBeforeNowCount) {
-            logInfo("Кажется паблик справляется без меня... я решил проверить по расписанию ${currentScheduleCheckpoint}, " +
-                "но ребята уже запостили достаточно постов. Их уже $alreadyPostedWallpostsCount, по моим подсчетам должно было быть $checkpointsBeforeNowCount, чтобы я занялся этим сам!")
+            logInfo("It seems the public page is managing without me… I decided to check according to the schedule ${currentScheduleCheckpoint}, " +
+                "but the guys have already posted enough updates. There are already $alreadyPostedWallpostsCount, and according to my calculations, there should have been $checkpointsBeforeNowCount, for me to take care of it myself!")
             return DailyScheduleWatchingResult(success = true)
         }
 
@@ -153,8 +153,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
 
         if (isStillCooldownBetweenPosts) {
             val lastPostLocalTime = sortedTodayWallposts.last().first
-            logInfo("Жду пока пройдет кулдаун (${barsik.configuration.wallposts.dailySchedule.periodBetweenPostings}) " +
-                "с последнего поста $lastPostLocalTime и буду готов запостить что-то новенькое! Осталось ждать ${(LocalTime.now(currentZoneId).toSecondOfDay() - lastPostLocalTime.toSecondOfDay()).seconds.inWholeMinutes} минут...")
+            logInfo("Waiting for the cooldown to pass (${barsik.configuration.wallposts.dailySchedule.periodBetweenPostings}) " +
+                "since the last post at $lastPostLocalTime, and I’ll be ready to post something new! Only ${(LocalTime.now(currentZoneId).toSecondOfDay() - lastPostLocalTime.toSecondOfDay()).seconds.inWholeMinutes} minutes left to wait…")
             return DailyScheduleWatchingResult(success = true)
         }
 
