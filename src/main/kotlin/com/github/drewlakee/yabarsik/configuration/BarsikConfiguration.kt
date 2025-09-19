@@ -61,7 +61,7 @@ data class Telegram(val report: Report) {
 }
 
 data class Wallposts(val communityId: Int, val domain: String, val dailySchedule: DailySchedule) {
-    data class DailySchedule(val timeZone: String, val checkpoints: List<Checkpoint>) {
+    data class DailySchedule(val timeZone: String, val periodBetweenPostings: String, val checkpoints: List<Checkpoint>) {
         data class Checkpoint(val at: String, val plusPostponeDuration: String)
     }
 }

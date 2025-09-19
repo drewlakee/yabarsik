@@ -9,6 +9,7 @@ import com.github.drewlakee.yabarsik.BarsilGptImageUrlMessage
 import com.github.drewlakee.yabarsik.SimpleGptResponse
 import com.github.drewlakee.yabarsik.configuration.Content
 import com.github.drewlakee.yabarsik.logError
+import com.github.drewlakee.yabarsik.logInfo
 import com.github.drewlakee.yabarsik.scenario.BarsikScenario
 import com.github.drewlakee.yabarsik.scenario.BarsikScenarioResult
 import com.github.drewlakee.yabarsik.vk.api.VkGroups
@@ -26,7 +27,14 @@ import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.peekFailure
 import dev.forkhandles.result4k.recover
 import dev.forkhandles.result4k.valueOrNull
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class DailyScheduleWatchingResult(
     private val success: Boolean,
@@ -66,6 +74,90 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
     override fun play(barsik: Barsik): DailyScheduleWatchingResult {
+        val currentZoneId = ZoneId.of(barsik.configuration.wallposts.dailySchedule.timeZone)
+        val (currentDate, currentScheduleCheckpoint) =
+            with(barsik.configuration.wallposts.dailySchedule) {
+                LocalDate.now(currentZoneId) to
+                    checkpoints
+                        .asSequence()
+                        .sortedBy { checkpoint -> LocalTime.parse(checkpoint.at) }
+                        .lastOrNull() { checkpoint -> LocalTime.parse(checkpoint.at).isBefore(LocalTime.now(currentZoneId)) }
+            }
+
+        if (currentScheduleCheckpoint == null) {
+            logInfo("Кажется время еще не пришло, спим дальше... мое расписание: ${barsik.configuration.wallposts.dailySchedule.checkpoints}")
+            return DailyScheduleWatchingResult(success = true)
+        }
+
+        val previousCheckpoint = with (barsik.configuration.wallposts.dailySchedule) {
+            checkpoints
+                .asSequence()
+                .sortedBy { checkpoint -> LocalTime.parse(checkpoint.at) }
+                .lastOrNull { checkpoint -> LocalTime.parse(checkpoint.at).isBefore(LocalTime.parse(currentScheduleCheckpoint.at)) }
+        }
+
+        val isStillPreviousPostponeCooldownBetweenPosts = previousCheckpoint?.let { previous ->
+            val cooldown = previous.plusPostponeDuration.let { Duration.parse(it) }
+            val previousLocalTime = LocalTime.parse(previous.at)
+            (LocalTime.now(currentZoneId).toSecondOfDay() - previousLocalTime.toSecondOfDay()).toLong().seconds.inWholeHours < cooldown.inWholeHours
+        } ?: false
+
+        if (isStillPreviousPostponeCooldownBetweenPosts) {
+            logInfo("Возможно сейчас отложен предыдущий пост, надо подожать... предыдущий ${LocalTime.parse(previousCheckpoint.at)} c кулдауном ${previousCheckpoint.plusPostponeDuration}")
+            return DailyScheduleWatchingResult(success = true)
+        }
+
+        val todayWallposts =
+            barsik.getVkTodayWallposts(
+                domain = barsik.configuration.wallposts.domain,
+                today = currentDate,
+                zone = currentZoneId,
+            )
+
+        if (todayWallposts.failureOrNull() != null) {
+            logError(todayWallposts.failureOrNull()!!.cause)
+            return DailyScheduleWatchingResult(
+                success = false,
+                message = "Пытался узнать что вы сегодня ($currentDate, $currentZoneId) постили в паблике, но получаю ошибку...",
+                sendTelegram = true,
+            )
+        }
+
+        val sortedTodayWallposts =
+            todayWallposts
+                .valueOrNull()!!
+                .response
+                .items
+                .map { wallpost -> LocalTime.ofInstant(Instant.ofEpochSecond(wallpost.date), currentZoneId) to wallpost }
+                .sortedBy { (localTime, _) -> localTime }
+
+        val checkpointsBeforeNowCount = barsik.configuration.wallposts.dailySchedule.checkpoints.count { checkpoint ->
+            with(LocalTime.parse(checkpoint.at)) {
+                val checkpointLocalTime = LocalTime.parse(checkpoint.at)
+                isBefore(checkpointLocalTime) || this.equals(checkpointLocalTime)
+            }
+        }
+
+        val alreadyPostedWallpostsCount = sortedTodayWallposts.count { (localTime, _) -> localTime.isBefore(LocalTime.now(currentZoneId)) }
+
+        if (alreadyPostedWallpostsCount > checkpointsBeforeNowCount) {
+            logInfo("Кажется паблик справляется без меня... я решил проверить по расписанию ${currentScheduleCheckpoint}, " +
+                "но ребята уже запостили достаточно постов. Их уже $alreadyPostedWallpostsCount, по моим подсчетам должно было быть $checkpointsBeforeNowCount, чтобы я занялся этим сам!")
+            return DailyScheduleWatchingResult(success = true)
+        }
+
+        val isStillCooldownBetweenPosts =  sortedTodayWallposts.lastOrNull()?.first?.let { lastPostLocalTime ->
+            val cooldown = barsik.configuration.wallposts.dailySchedule.periodBetweenPostings.let { Duration.parse(it) }
+            (LocalTime.now(currentZoneId).toSecondOfDay() - lastPostLocalTime.toSecondOfDay()).toLong().seconds.inWholeHours < cooldown.inWholeHours
+        } ?: false
+
+        if (isStillCooldownBetweenPosts) {
+            val lastPostLocalTime = sortedTodayWallposts.last().first
+            logInfo("Жду пока пройдет кулдаун (${barsik.configuration.wallposts.dailySchedule.periodBetweenPostings}) " +
+                "с последнего поста $lastPostLocalTime и буду готов запостить что-то новенькое! Осталось ждать ${(LocalTime.now(currentZoneId).toSecondOfDay() - lastPostLocalTime.toSecondOfDay()).seconds.inWholeMinutes} минут...")
+            return DailyScheduleWatchingResult(success = true)
+        }
+
         val mediaProviders =
             barsik.configuration.content.providers
                 .asSequence()
@@ -83,9 +175,10 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         ) {
             return DailyScheduleWatchingResult(
                 success = false,
-                message = """
+                message =
+                    """
                     Хм... ты забыл указать мне источники для контента? Ну ладно, тогда я отдыхаю \uD83D\uDE3C"
-                """.trimIndent(),
+                    """.trimIndent(),
                 sendTelegram = true,
             )
         }
@@ -134,35 +227,48 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 }
             }
 
-        val communities = photoAttachments.asSequence()
-            .filter { it.photo!!.isCommunityOwner() }
-            .map { it.photo!!.ownerId }
-            .toList() + musicAttachments.asSequence()
-                .filter { it.audio!!.isCommunityOwner() }
-                .map { it.audio!!.ownerId }
-                .toList()
-        val users = photoAttachments.asSequence()
-            .filter { !it.photo!!.isCommunityOwner() }
-            .map { it.photo!!.ownerId }
-            .toList() + musicAttachments.asSequence()
-            .filter { !it.audio!!.isCommunityOwner() }
-            .map { it.audio!!.ownerId }
-            .toList()
+        val communities =
+            photoAttachments
+                .asSequence()
+                .filter { it.photo!!.isCommunityOwner() }
+                .map { it.photo!!.ownerId }
+                .toList() +
+                musicAttachments
+                    .asSequence()
+                    .filter { it.audio!!.isCommunityOwner() }
+                    .map { it.audio!!.ownerId }
+                    .toList()
+        val users =
+            photoAttachments
+                .asSequence()
+                .filter { !it.photo!!.isCommunityOwner() }
+                .map { it.photo!!.ownerId }
+                .toList() +
+                musicAttachments
+                    .asSequence()
+                    .filter { !it.audio!!.isCommunityOwner() }
+                    .map { it.audio!!.ownerId }
+                    .toList()
 
-        val openSharingAttachmentsUsers = barsik.getVkUsers(users.distinct())
-            .peekFailure { logError(it.cause) }
-            .map { it.users }
-            .recover { listOf() }
-            .associateBy { it.id }
+        val openSharingAttachmentsUsers =
+            barsik
+                .getVkUsers(users.distinct())
+                .peekFailure { logError(it.cause) }
+                .map { it.users }
+                .recover { listOf() }
+                .associateBy { it.id }
 
-        val openSharingAttachmentsCommunities = barsik.getVkGroups(communities.map { it * -1 }.distinct())
-            .peekFailure { logError(it.cause) }
-            .map { it.response.groups }
-            .recover { listOf() }
-            .associateBy { it.id * -1 }
+        val openSharingAttachmentsCommunities =
+            barsik
+                .getVkGroups(communities.map { it * -1 }.distinct())
+                .peekFailure { logError(it.cause) }
+                .map { it.response.groups }
+                .recover { listOf() }
+                .associateBy { it.id * -1 }
 
-        val openSharingOwnerIds = users.filter { it !in openSharingAttachmentsUsers || openSharingAttachmentsUsers[it]!!.isOpenAccount() } +
-            communities.filter { it !in openSharingAttachmentsCommunities || openSharingAttachmentsCommunities[it]!!.isOpenCommunity() }
+        val openSharingOwnerIds =
+            users.filter { it !in openSharingAttachmentsUsers || openSharingAttachmentsUsers[it]!!.isOpenAccount() } +
+                communities.filter { it !in openSharingAttachmentsCommunities || openSharingAttachmentsCommunities[it]!!.isOpenCommunity() }
 
         musicAttachments = musicAttachments.filter { it.audio!!.ownerId in openSharingOwnerIds }
         photoAttachments = photoAttachments.filter { it.photo!!.ownerId in openSharingOwnerIds }
@@ -194,7 +300,10 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         ),
                         BarsikGptTextMessage(
                             role = CommonLlmMessageRole.USER,
-                            text = musicAttachments.groupBy { it.audio!!.artist }.entries.joinToString(separator = ", ") { (artist, _) -> artist },
+                            text =
+                                musicAttachments.groupBy { it.audio!!.artist }.entries.joinToString(
+                                    separator = ", ",
+                                ) { (artist, _) -> artist },
                         ),
                     ),
             )
@@ -212,62 +321,71 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         if (llmAudioResult.failureOrNull() != null) {
             return DailyScheduleWatchingResult(
                 success = false,
-                message = """
-                LLM то ненастоящий, как-то неожидаемо ответил насчет музыки, возможно, галлюцинация, но я не понял... в общем в другой раз еще раз попробую. 
-                
-                Вот, что мне отдал:
-                ${llmAudioResult.failureOrNull()}
-            """.trimIndent(),
+                message =
+                    """
+                    LLM то ненастоящий, как-то неожидаемо ответил насчет музыки, возможно, галлюцинация, но я не понял... в общем в другой раз еще раз попробую. 
+                    
+                    Вот, что мне отдал:
+                    ${llmAudioResult.failureOrNull()}
+                    """.trimIndent(),
                 sendTelegram = true,
             )
         }
 
-        val downloadedImages = photoAttachments.asSequence()
-            .map {
-                it to barsik.getImage(url = it.photo!!.origPhoto?.url ?: it.photo.sizes.last().url)
-            }
-            .filter { it.second.failureOrNull() == null }
-            .map { it.first to it.second.valueOrNull()!! }
-            .toList()
+        val downloadedImages =
+            photoAttachments
+                .asSequence()
+                .map {
+                    it to
+                        barsik.getImage(
+                            url =
+                                it.photo!!.origPhoto?.url ?: it.photo.sizes
+                                    .last()
+                                    .url,
+                        )
+                }.filter { it.second.failureOrNull() == null }
+                .map { it.first to it.second.valueOrNull()!! }
+                .toList()
 
         if (downloadedImages.isEmpty()) {
             return DailyScheduleWatchingResult(
                 success = false,
                 message = "Все подобранные фотографии не получилось загрузить из интернета... надо проверить будет в чем проблема!",
-                sendTelegram = true
+                sendTelegram = true,
             )
         }
 
-        val llmPhotoResponse = downloadedImages.windowed(3, 3, partialWindows = true).map { windowed ->
-            barsik.askMultiModalGpt(
-                temperature = barsik.configuration.llm.photoPromt.temperature,
-                messages =
-                    buildList {
-                        add(
-                            BarsikGptTextMessage(
-                                role = CommonLlmMessageRole.SYSTEM,
-                                text = barsik.configuration.llm.photoPromt.systemInstruction,
-                            ),
-                        )
-
-                        windowed.forEach { (attachment, image) ->
+        val llmPhotoResponse =
+            downloadedImages.windowed(3, 3, partialWindows = true).map { windowed ->
+                barsik.askMultiModalGpt(
+                    temperature = barsik.configuration.llm.photoPromt.temperature,
+                    messages =
+                        buildList {
                             add(
                                 BarsikGptTextMessage(
-                                    role = CommonLlmMessageRole.USER,
-                                    text = attachment.photo!!.id.toString(),
+                                    role = CommonLlmMessageRole.SYSTEM,
+                                    text = barsik.configuration.llm.photoPromt.systemInstruction,
                                 ),
                             )
 
-                            add(
-                                BarsilGptImageUrlMessage(
-                                    role = CommonLlmMessageRole.USER,
-                                    url = image.base64String,
-                                ),
-                            )
-                        }
-                    },
-            )
-        }
+                            windowed.forEach { (attachment, image) ->
+                                add(
+                                    BarsikGptTextMessage(
+                                        role = CommonLlmMessageRole.USER,
+                                        text = attachment.photo!!.id.toString(),
+                                    ),
+                                )
+
+                                add(
+                                    BarsilGptImageUrlMessage(
+                                        role = CommonLlmMessageRole.USER,
+                                        url = image.base64String,
+                                    ),
+                                )
+                            }
+                        },
+                )
+            }
 
         if (llmPhotoResponse.all { it.failureOrNull() != null }) {
             llmPhotoResponse.filter { it.failureOrNull() != null }.forEach { logError(it.failureOrNull()!!.cause) }
@@ -278,35 +396,44 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
-        val llmPhotoResult = llmPhotoResponse.asSequence()
-            .filter { it.failureOrNull() == null }
-            .map { it.valueOrNull()!! }
-            .map { it.toExpectedPhotoPromtResult() }
-            .toList()
+        val llmPhotoResult =
+            llmPhotoResponse
+                .asSequence()
+                .filter { it.failureOrNull() == null }
+                .map { it.valueOrNull()!! }
+                .map { it.toExpectedPhotoPromtResult() }
+                .toList()
 
         if (llmPhotoResult.all { it.failureOrNull() != null }) {
             return DailyScheduleWatchingResult(
                 success = false,
-                message = """
-                LLM видимо не справился с моими великолепными фотографиями... в общем в другой раз еще раз попробую. 
-                
-                Вот, что мне отдал:
-                ${llmPhotoResult.filter { it.failureOrNull() != null }.map { it.failureOrNull() }}
-            """.trimIndent(),
+                message =
+                    """
+                    LLM видимо не справился с моими великолепными фотографиями... в общем в другой раз еще раз попробую. 
+                    
+                    Вот, что мне отдал:
+                    ${llmPhotoResult.filter { it.failureOrNull() != null }.map { it.failureOrNull() }}
+                    """.trimIndent(),
                 sendTelegram = true,
             )
         }
 
-        val approvedBands = llmAudioResult.valueOrNull()!!.result.asSequence()
-            .filter { it.approval >= barsik.configuration.content.settings.musicLlmApprovalThreshold }
-            .associateBy { it.band }
+        val approvedBands =
+            llmAudioResult
+                .valueOrNull()!!
+                .result
+                .asSequence()
+                .filter { it.approval >= barsik.configuration.content.settings.musicLlmApprovalThreshold }
+                .associateBy { it.band }
 
-        val approvedPhotos = llmPhotoResult.asSequence()
-            .filter { it.failureOrNull() == null }
-            .map { it.valueOrNull()!! }
-            .flatMap { it.result }
-            .filter { it.approval }
-            .associateBy { it.photo }
+        val approvedPhotos =
+            llmPhotoResult
+                .asSequence()
+                .filter { it.failureOrNull() == null }
+                .map { it.valueOrNull()!! }
+                .flatMap { it.result }
+                .filter { it.approval }
+                .associateBy { it.photo }
 
         val resultingMusicAttachments = musicAttachments.filter { it.audio!!.artist in approvedBands }
         val resultingPhotoAttachments = photoAttachments.filter { it.photo!!.id.toString() in approvedPhotos }
@@ -330,20 +457,25 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val approvedMusicAttachment = resultingMusicAttachments.getRandomAttachment()
         val approvedPhotoAttachment = resultingPhotoAttachments.getRandomAttachment()
 
-        val createdPost = barsik.createVkWallpost(
-            attachments = listOf(
-                VkPostWallpostAttachment(
-                    type = approvedMusicAttachment.type,
-                    ownerId = approvedMusicAttachment.audio!!.ownerId,
-                    mediaId = approvedMusicAttachment.audio!!.id,
-                ),
-                VkPostWallpostAttachment(
-                    type = approvedPhotoAttachment.type,
-                    ownerId = approvedPhotoAttachment.photo!!.ownerId,
-                    mediaId = approvedPhotoAttachment.photo!!.id,
-                )
-            )
-        ).peekFailure { logError(it.cause) }
+        val publishDate = Instant.now().plus(currentScheduleCheckpoint.plusPostponeDuration.let { Duration.parse(it).toJavaDuration() })
+        val createdPost =
+            barsik
+                .createVkWallpost(
+                    attachments =
+                        listOf(
+                            VkPostWallpostAttachment(
+                                type = approvedMusicAttachment.type,
+                                ownerId = approvedMusicAttachment.audio!!.ownerId,
+                                mediaId = approvedMusicAttachment.audio!!.id,
+                            ),
+                            VkPostWallpostAttachment(
+                                type = approvedPhotoAttachment.type,
+                                ownerId = approvedPhotoAttachment.photo!!.ownerId,
+                                mediaId = approvedPhotoAttachment.photo!!.id,
+                            ),
+                        ),
+                    publishDate = publishDate.epochSecond,
+                ).peekFailure { logError(it.cause) }
 
         if (createdPost.failureOrNull() != null) {
             return DailyScheduleWatchingResult(
@@ -355,18 +487,21 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
 
         return DailyScheduleWatchingResult(
             success = true,
-            message = """
+            message =
+                """
                 Ура! Я неплохо потрудился и вот, что у меня вышло, пойду отдыхать...
                 
-                [картиночка](${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes.last().url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
+                [картиночка](${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes
+                    .last()
+                    .url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
                 
-                Положил это на [страницу](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId})!
+                Положил в [предложку](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId}) и запланировал на ${publishDate.atZone(currentZoneId)} !
                 
                 ```дебаг_инфа
                 photoOwnerId=${approvedPhotoAttachment.photo.ownerId}
                 audioOwnerId=${approvedMusicAttachment.audio.ownerId}
                 ```
-            """.trimIndent(),
+                """.trimIndent(),
             sendTelegram = true,
         )
     }
@@ -408,6 +543,8 @@ private fun VkUsers.User.isOpenAccount() = !isClosed && canSeeAudio == 1 && canA
 
 private fun VkGroups.Response.Group.isOpenCommunity() = isClosed == 0
 
-private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentAudio.isCommunityOwner() = ownerId < 0
+private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentAudio.isCommunityOwner() =
+    ownerId < 0
 
-private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentPhoto.isCommunityOwner() = ownerId < 0
+private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentPhoto.isCommunityOwner() =
+    ownerId < 0

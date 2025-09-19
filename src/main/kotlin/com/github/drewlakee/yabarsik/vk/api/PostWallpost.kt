@@ -29,12 +29,14 @@ data class VkPostWallpostAttachment(
 data class PostWallpost(
     val ownerId: Int,
     val attachments: List<VkPostWallpostAttachment>,
+    val publishDate: Long? = null,
 ) : VkApiAction<VkPostWallpost> {
     override fun toRequest() = Request(Method.POST, "/method/wall.post")
         .body(
             listOf(
                 "access_token=$VK_COMMUNITY_ACCESS_TOKEN",
                 "owner_id=$ownerId",
+                publishDate?.let { "publish_date=$it" },
                 if (attachments.isNotEmpty()) "attachments=${attachments.joinToString(",")}" else null,
                 "from_group=1",
                 "v=5.199",

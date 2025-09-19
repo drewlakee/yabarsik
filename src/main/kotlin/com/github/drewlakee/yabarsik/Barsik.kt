@@ -12,6 +12,7 @@ import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
 import com.github.drewlakee.yabarsik.vk.api.VkUsers
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostsAttachmentType
+import com.github.drewlakee.yabarsik.vk.api.getTodayWallpost
 import com.github.drewlakee.yabarsik.vk.api.takeAttachmentsRandomly
 import com.github.drewlakee.yabarsik.yandex.llm.api.AskOpenAiModels
 import com.github.drewlakee.yabarsik.yandex.llm.api.AskOpenAiModelsImageUrlContent
@@ -28,6 +29,8 @@ import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.peekFailure
 import org.http4k.cloudnative.RemoteRequestFailed
 import yandex.cloud.sdk.functions.Context
+import java.time.LocalDate
+import java.time.ZoneId
 
 class Barsik(
     private val context: Context,
@@ -74,6 +77,9 @@ class Barsik(
         )
     )
 
+    fun getVkTodayWallposts(domain: String, today: LocalDate, zone: ZoneId) =
+        vkApi.getTodayWallpost(domain, today, zone)
+
     fun takeVkAttachmentsRandomly(
         domain: String,
         count: Int,
@@ -84,10 +90,11 @@ class Barsik(
         type = type,
     )
     
-    fun createVkWallpost(attachments: List<VkPostWallpostAttachment>) = vkApi.invoke(
+    fun createVkWallpost(attachments: List<VkPostWallpostAttachment>, publishDate: Long? = null) = vkApi.invoke(
         PostWallpost(
             ownerId = configuration.wallposts.communityId,
             attachments = attachments,
+            publishDate = publishDate,
         )
     )
 

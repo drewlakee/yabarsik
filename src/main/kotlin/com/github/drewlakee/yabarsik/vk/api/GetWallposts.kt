@@ -17,10 +17,10 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
-import java.util.LinkedList
-import kotlin.collections.removeLast
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.random.Random
-import kotlin.sequences.toMutableList
 
 data class VkWallposts(
     val response: VkWallpostsResponse,
@@ -120,6 +120,24 @@ fun VkApi.getTotalWallpostsCount(domain: String): Result4k<Int, RemoteRequestFai
             count = 0,
         ),
     ).map { it.response.count }
+
+fun VkApi.getTodayWallpost(domain: String, today: LocalDate, zone: ZoneId): Result4k<VkWallposts, RemoteRequestFailed> =
+    invoke(
+        GetWallposts(
+            domain = domain,
+            offset = 0,
+            count = 10,
+        )
+    ).map {
+        VkWallposts(
+            response = VkWallposts.VkWallpostsResponse(
+                count = it.response.count,
+                items = it.response.items.filter {
+                    LocalDate.ofInstant(Instant.ofEpochSecond(it.date), zone).isEqual(today)
+                },
+            )
+        )
+    }
 
 fun VkApi.takeAttachmentsRandomly(
     domain: String,
