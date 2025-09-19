@@ -11,6 +11,7 @@ import com.github.drewlakee.yabarsik.configuration.Content
 import com.github.drewlakee.yabarsik.logError
 import com.github.drewlakee.yabarsik.scenario.BarsikScenario
 import com.github.drewlakee.yabarsik.scenario.BarsikScenarioResult
+import com.github.drewlakee.yabarsik.vk.api.VkGroups
 import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
 import com.github.drewlakee.yabarsik.vk.api.VkUsers
 import com.github.drewlakee.yabarsik.vk.api.VkWallposts
@@ -133,19 +134,38 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 }
             }
 
-        val users = photoAttachments.map { it.photo!!.ownerId } + musicAttachments.map { it.audio!!.ownerId }
-        val openSharingAttachmentsUsers = barsik.getVkUsers(users)
+        val communities = photoAttachments.asSequence()
+            .filter { it.photo!!.isCommunityOwner() }
+            .map { it.photo!!.ownerId }
+            .toList() + musicAttachments.asSequence()
+                .filter { it.audio!!.isCommunityOwner() }
+                .map { it.audio!!.ownerId }
+                .toList()
+        val users = photoAttachments.asSequence()
+            .filter { !it.photo!!.isCommunityOwner() }
+            .map { it.photo!!.ownerId }
+            .toList() + musicAttachments.asSequence()
+            .filter { !it.audio!!.isCommunityOwner() }
+            .map { it.audio!!.ownerId }
+            .toList()
+
+        val openSharingAttachmentsUsers = barsik.getVkUsers(users.distinct())
             .peekFailure { logError(it.cause) }
             .map { it.users }
             .recover { listOf() }
-            .asSequence()
-            .filter { it.isOpenAccount() }
-            .map { it.id }
-            .toSet()
+            .associateBy { it.id }
 
-        // TODO + https://dev.vk.com/ru/method/groups.getById
-        musicAttachments = musicAttachments.filter { it.audio!!.ownerId in openSharingAttachmentsUsers }
-        photoAttachments = photoAttachments.filter { it.photo!!.ownerId in openSharingAttachmentsUsers }
+        val openSharingAttachmentsCommunities = barsik.getVkGroups(communities.map { it * -1 }.distinct())
+            .peekFailure { logError(it.cause) }
+            .map { it.response.groups }
+            .recover { listOf() }
+            .associateBy { it.id * -1 }
+
+        val openSharingOwnerIds = users.filter { it !in openSharingAttachmentsUsers || openSharingAttachmentsUsers[it]!!.isOpenAccount() } +
+            communities.filter { it !in openSharingAttachmentsCommunities || openSharingAttachmentsCommunities[it]!!.isOpenCommunity() }
+
+        musicAttachments = musicAttachments.filter { it.audio!!.ownerId in openSharingOwnerIds }
+        photoAttachments = photoAttachments.filter { it.photo!!.ownerId in openSharingOwnerIds }
 
         if (musicAttachments.isEmpty()) {
             return DailyScheduleWatchingResult(
@@ -385,3 +405,9 @@ private fun List<Content.Provider>.getRandomProvider() = this[Random.nextInt(siz
 private fun List<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>.getRandomAttachment() = this[Random.nextInt(size)]
 
 private fun VkUsers.User.isOpenAccount() = !isClosed && canSeeAudio == 1 && canAccessClosed
+
+private fun VkGroups.Response.Group.isOpenCommunity() = isClosed == 0
+
+private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentAudio.isCommunityOwner() = ownerId < 0
+
+private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentPhoto.isCommunityOwner() = ownerId < 0

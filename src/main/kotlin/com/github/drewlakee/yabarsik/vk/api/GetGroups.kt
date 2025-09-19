@@ -1,4 +1,4 @@
-// https://dev.vk.com/ru/method/users.get
+// https://dev.vk.com/ru/method/groups.getById
 package com.github.drewlakee.yabarsik.vk.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -13,34 +13,34 @@ import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
 
-data class VkUsers(
-    @field:JsonProperty("response") val users: List<User>,
+data class VkGroups(
+    val response: Response,
 ) {
-    data class User(
-        val id: Int,
-        @field:JsonProperty("can_see_audio") val canSeeAudio: Int,
-        @field:JsonProperty("screen_name") val screenName: String,
-        @field:JsonProperty("first_name") val firstName: String,
-        @field:JsonProperty("last_name") val lastName: String,
-        @field:JsonProperty("can_access_closed") val canAccessClosed: Boolean,
-        @field:JsonProperty("is_closed") val isClosed: Boolean,
-    )
+    data class Response(
+        val groups: List<Group>,
+    ) {
+        data class Group(
+            val id: Int,
+            val name: String,
+            @field:JsonProperty("screen_name") val screenName: String,
+            @field:JsonProperty("is_closed") val isClosed: Int,
+        )
+    }
 }
 
-data class GetUsers(val userIds: List<Int>): VkApiAction<VkUsers> {
-    override fun toRequest() = Request(Method.POST, "/method/users.get")
+data class GetGroups(val groupIds: List<Int>): VkApiAction<VkGroups> {
+    override fun toRequest() = Request(Method.POST, "/method/groups.getById")
         .body(
             listOf(
-                "user_ids=${userIds.joinToString(",")}",
                 "access_token=$VK_SERVICE_ACCESS_TOKEN",
-                "fields=can_see_audio,screen_name",
+                "group_ids=${groupIds.joinToString( ",")}",
                 "v=5.199",
             ).filter { it != null }.joinToString(separator = "&"),
         )
 
-    override fun toResult(response: Response): Result4k<VkUsers, RemoteRequestFailed> =
+    override fun toResult(response: Response): Result4k<VkGroups, RemoteRequestFailed> =
         when (response.status) {
-            Status.OK -> runCatching { VkApiAction.jsonTo<VkUsers>(response.body) }
+            Status.OK -> runCatching { VkApiAction.jsonTo<VkGroups>(response.body) }
                 .let {
                     if (it.isSuccess) {
                         Success(it.getOrNull()!!)

@@ -5,6 +5,7 @@ import com.github.drewlakee.yabarsik.configuration.Llm
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
+import com.github.drewlakee.yabarsik.vk.api.GetGroups
 import com.github.drewlakee.yabarsik.vk.api.GetUsers
 import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
@@ -64,6 +65,12 @@ class Barsik(
     fun getVkUsers(userIds: List<Int>) = vkApi.invoke(
         GetUsers(
             userIds = userIds,
+        )
+    )
+    
+    fun getVkGroups(groupsIds: List<Int>) = vkApi.invoke(
+        GetGroups(
+            groupIds = groupsIds,
         )
     )
 
