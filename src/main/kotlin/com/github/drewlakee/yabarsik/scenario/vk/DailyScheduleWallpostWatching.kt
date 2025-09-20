@@ -95,7 +95,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             }
 
         if (currentScheduleCheckpoint == null) {
-            logInfo("It seems the time has not come yet, let’s sleep some more… my schedule with amortization: $amortizationSchedule")
+            logInfo("None checkpoints were reached. It seems the time has not come yet. schedule=${barsik.configuration.wallposts.dailySchedule.checkpoints}, schedule with amortization=$amortizationSchedule")
             return DailyScheduleWatchingResult(success = true)
         }
 
@@ -130,8 +130,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val alreadyPostedWallpostsCount = sortedTodayWallposts.count { (localTime, _) -> localTime.isBefore(LocalTime.now(currentZoneId)) }
 
         if (alreadyPostedWallpostsCount >= checkpointsBeforeNowCount) {
-            logInfo("It seems the public page is managing without me… I decided to check according to the schedule ${currentScheduleCheckpoint}, " +
-                "but the guys have already posted enough updates. There are already $alreadyPostedWallpostsCount, and according to my calculations, there should have been $checkpointsBeforeNowCount, for me to take care of it myself!")
+            logInfo("It seems the public page is already managed without my help. I decided to check according to the current checkpoint ${currentScheduleCheckpoint}, " +
+                "but there are already enough posts on the page. There are $alreadyPostedWallpostsCount posts, and according to my schedule ${amortizationSchedule}, there should have been $checkpointsBeforeNowCount at maximum.")
             return DailyScheduleWatchingResult(success = true)
         }
 
