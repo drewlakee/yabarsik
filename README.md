@@ -71,13 +71,13 @@ wallposts:
     # Точки во времени, когда Барсик должен сделать пост
     checkpoints:
       - at: 09:00
-        # Дополнительное время от момента создания поста,
-        # используется для отложенных постов, иначе PT0H - в тот же момент
-        plusPostponeDuration: PT1H
+        # Дополнительное время от момента в расписании,
+        # используется для увеличения случайности, иначе PT0H - в тот же момент
+        amortizationDuration: PT1H
       - at: 14:00
-        plusPostponeDuration: PT1H
+        amortizationDuration: PT1H
       - at: 20:00
-        plusPostponeDuration: PT1H
+        amortizationDuration: PT1H
 
 # Настройки облака в Yandex.Cloud
 cloud:

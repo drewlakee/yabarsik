@@ -8,6 +8,7 @@ import com.github.drewlakee.yabarsik.BarsikGptTextMessage
 import com.github.drewlakee.yabarsik.BarsilGptImageUrlMessage
 import com.github.drewlakee.yabarsik.SimpleGptResponse
 import com.github.drewlakee.yabarsik.configuration.Content
+import com.github.drewlakee.yabarsik.configuration.Wallposts
 import com.github.drewlakee.yabarsik.logError
 import com.github.drewlakee.yabarsik.logInfo
 import com.github.drewlakee.yabarsik.scenario.BarsikScenario
@@ -75,38 +76,27 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
 
     override fun play(barsik: Barsik): DailyScheduleWatchingResult {
         val currentZoneId = ZoneId.of(barsik.configuration.wallposts.dailySchedule.timeZone)
-        val (currentDate, currentScheduleCheckpoint) =
-            with(barsik.configuration.wallposts.dailySchedule) {
-                LocalDate.now(currentZoneId) to
-                    checkpoints
-                        .asSequence()
-                        .sortedBy { checkpoint -> LocalTime.parse(checkpoint.at) }
-                        .lastOrNull() { checkpoint -> LocalTime.parse(checkpoint.at).isBefore(LocalTime.now(currentZoneId)) }
+        val amortizationSchedule = barsik.configuration.wallposts.dailySchedule.checkpoints
+            .asSequence()
+            .sortedBy { checkpoint -> LocalTime.parse(checkpoint.at) }
+            .map { checkpoint ->
+                checkpoint.copy(
+                    at = with(checkpoint.at) {
+                        val amortizationSeconds = Duration.parse(checkpoint.amortizationDuration).inWholeSeconds
+                        val randomDuration = Random.nextLong(0, amortizationSeconds).seconds
+                        LocalTime.parse(checkpoint.at).plus(randomDuration.toJavaDuration()).toString()
+                    }
+                )
+            }
+            .toList()
+
+        val (currentDate, currentScheduleCheckpoint) = LocalDate.now(currentZoneId) to
+            amortizationSchedule.lastOrNull() { checkpoint ->
+                LocalTime.parse(checkpoint.at).isBefore(LocalTime.now(currentZoneId))
             }
 
         if (currentScheduleCheckpoint == null) {
-            logInfo("It seems the time has not come yet, let’s sleep some more… my schedule: ${barsik.configuration.wallposts.dailySchedule.checkpoints}")
-            return DailyScheduleWatchingResult(success = true)
-        }
-
-        val previousCheckpoint = with (barsik.configuration.wallposts.dailySchedule) {
-            val previousCheckpoint = checkpoints
-                .asSequence()
-                .sortedBy { checkpoint -> LocalTime.parse(checkpoint.at) }
-                .lastOrNull { checkpoint -> LocalTime.parse(checkpoint.at).isBefore(LocalTime.parse(currentScheduleCheckpoint.at)) }
-
-            previousCheckpoint ?: currentScheduleCheckpoint
-        }
-
-        val isStillPreviousPostponeCooldownBetweenPosts = previousCheckpoint?.let { previous ->
-            val amortization = Duration.parse("PT5M")
-            val cooldown = previous.plusPostponeDuration.let { Duration.parse(it) }.plus(amortization)
-            val previousLocalTime = LocalTime.parse(previous.at)
-            (LocalTime.now(currentZoneId).toSecondOfDay() - previousLocalTime.toSecondOfDay()).toLong().seconds.inWholeHours < cooldown.inWholeHours
-        } ?: false
-
-        if (isStillPreviousPostponeCooldownBetweenPosts) {
-            logInfo("It’s possible that the previous post has been postponed now, we need to wait… the previous one at  ${LocalTime.parse(previousCheckpoint.at)} with cooldown ${previousCheckpoint.plusPostponeDuration}")
+            logInfo("It seems the time has not come yet, let’s sleep some more… my schedule with amortization: $amortizationSchedule")
             return DailyScheduleWatchingResult(success = true)
         }
 
@@ -134,7 +124,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .map { wallpost -> LocalTime.ofInstant(Instant.ofEpochSecond(wallpost.date), currentZoneId) to wallpost }
                 .sortedBy { (localTime, _) -> localTime }
 
-        val checkpointsBeforeNowCount = barsik.configuration.wallposts.dailySchedule.checkpoints.count { checkpoint ->
+        val checkpointsBeforeNowCount = amortizationSchedule.count { checkpoint ->
             LocalTime.parse(checkpoint.at).isBefore(LocalTime.now(currentZoneId))
         }
 
@@ -457,7 +447,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val approvedMusicAttachment = resultingMusicAttachments.getRandomAttachment()
         val approvedPhotoAttachment = resultingPhotoAttachments.getRandomAttachment()
 
-        val publishUtcDate = Instant.now().plus(currentScheduleCheckpoint.plusPostponeDuration.let { Duration.parse(it).toJavaDuration() })
+        val publishUtcDate = Instant.now().plus(currentScheduleCheckpoint.amortizationDuration.let { Duration.parse(it).toJavaDuration() })
         val createdPost =
             barsik
                 .createVkWallpost(
