@@ -135,7 +135,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .sortedBy { (localTime, _) -> localTime }
 
         val checkpointsBeforeNowCount = barsik.configuration.wallposts.dailySchedule.checkpoints.count { checkpoint ->
-            LocalTime.parse(checkpoint.at).isBefore(LocalTime.now())
+            LocalTime.parse(checkpoint.at).isBefore(LocalTime.now(currentZoneId))
         }
 
         val alreadyPostedWallpostsCount = sortedTodayWallposts.count { (localTime, _) -> localTime.isBefore(LocalTime.now(currentZoneId)) }
