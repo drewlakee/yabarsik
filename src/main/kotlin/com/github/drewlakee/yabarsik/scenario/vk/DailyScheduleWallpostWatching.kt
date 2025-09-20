@@ -90,10 +90,12 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         }
 
         val previousCheckpoint = with (barsik.configuration.wallposts.dailySchedule) {
-            checkpoints
+            val previousCheckpoint = checkpoints
                 .asSequence()
                 .sortedBy { checkpoint -> LocalTime.parse(checkpoint.at) }
                 .lastOrNull { checkpoint -> LocalTime.parse(checkpoint.at).isBefore(LocalTime.parse(currentScheduleCheckpoint.at)) }
+
+            previousCheckpoint ?: currentScheduleCheckpoint
         }
 
         val isStillPreviousPostponeCooldownBetweenPosts = previousCheckpoint?.let { previous ->
