@@ -135,15 +135,12 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .sortedBy { (localTime, _) -> localTime }
 
         val checkpointsBeforeNowCount = barsik.configuration.wallposts.dailySchedule.checkpoints.count { checkpoint ->
-            with(LocalTime.parse(checkpoint.at)) {
-                val checkpointLocalTime = LocalTime.parse(checkpoint.at)
-                isBefore(checkpointLocalTime) || this.equals(checkpointLocalTime)
-            }
+            LocalTime.parse(checkpoint.at).isBefore(LocalTime.now())
         }
 
         val alreadyPostedWallpostsCount = sortedTodayWallposts.count { (localTime, _) -> localTime.isBefore(LocalTime.now(currentZoneId)) }
 
-        if (alreadyPostedWallpostsCount > checkpointsBeforeNowCount) {
+        if (alreadyPostedWallpostsCount >= checkpointsBeforeNowCount) {
             logInfo("It seems the public page is managing without me… I decided to check according to the schedule ${currentScheduleCheckpoint}, " +
                 "but the guys have already posted enough updates. There are already $alreadyPostedWallpostsCount, and according to my calculations, there should have been $checkpointsBeforeNowCount, for me to take care of it myself!")
             return DailyScheduleWatchingResult(success = true)
@@ -157,7 +154,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         if (isStillCooldownBetweenPosts) {
             val lastPostLocalTime = sortedTodayWallposts.last().first
             logInfo("Waiting for the cooldown to pass (${barsik.configuration.wallposts.dailySchedule.periodBetweenPostings}) " +
-                "since the last post at $lastPostLocalTime, and I’ll be ready to post something new! Only ${(LocalTime.now(currentZoneId).toSecondOfDay() - lastPostLocalTime.toSecondOfDay()).seconds.inWholeMinutes} minutes left to wait…")
+                "since the last post at $lastPostLocalTime, and I’ll be ready to post something new!")
             return DailyScheduleWatchingResult(success = true)
         }
 
