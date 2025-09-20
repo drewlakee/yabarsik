@@ -459,7 +459,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val approvedMusicAttachment = resultingMusicAttachments.getRandomAttachment()
         val approvedPhotoAttachment = resultingPhotoAttachments.getRandomAttachment()
 
-        val publishDate = Instant.now().plus(currentScheduleCheckpoint.plusPostponeDuration.let { Duration.parse(it).toJavaDuration() })
+        val publishUtcDate = Instant.now().plus(currentScheduleCheckpoint.plusPostponeDuration.let { Duration.parse(it).toJavaDuration() })
         val createdPost =
             barsik
                 .createVkWallpost(
@@ -476,7 +476,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                                 mediaId = approvedPhotoAttachment.photo!!.id,
                             ),
                         ),
-                    publishDate = publishDate.epochSecond,
+                    publishDate = publishUtcDate.epochSecond,
                 ).peekFailure { logError(it.cause) }
 
         if (createdPost.failureOrNull() != null) {
@@ -487,6 +487,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
+        val (publishDate, publishTime) = publishUtcDate.atZone(currentZoneId).let { it.toLocalDate() to it.toLocalTime() }
         return DailyScheduleWatchingResult(
             success = true,
             message =
@@ -497,7 +498,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     .last()
                     .url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
                 
-                Положил в [предложку](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId}) и запланировал на ${publishDate.atZone(currentZoneId)} !
+                Положил в [предложку](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId}) и запланировал на $publishDate в $publishTime!
                 
                 ```дебаг_инфа
                 photoOwnerId=${approvedPhotoAttachment.photo.ownerId}
