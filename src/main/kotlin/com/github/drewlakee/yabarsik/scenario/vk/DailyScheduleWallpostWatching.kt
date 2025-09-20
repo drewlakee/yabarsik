@@ -99,7 +99,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         }
 
         val isStillPreviousPostponeCooldownBetweenPosts = previousCheckpoint?.let { previous ->
-            val cooldown = previous.plusPostponeDuration.let { Duration.parse(it) }
+            val amortization = Duration.parse("PT5M")
+            val cooldown = previous.plusPostponeDuration.let { Duration.parse(it) }.plus(amortization)
             val previousLocalTime = LocalTime.parse(previous.at)
             (LocalTime.now(currentZoneId).toSecondOfDay() - previousLocalTime.toSecondOfDay()).toLong().seconds.inWholeHours < cooldown.inWholeHours
         } ?: false
