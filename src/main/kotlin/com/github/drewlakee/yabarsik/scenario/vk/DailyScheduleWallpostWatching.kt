@@ -74,6 +74,9 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
     override fun play(barsik: Barsik): DailyScheduleWatchingResult {
+        logInfo("Start playing scenario")
+        logInfo("Scenario schedule is ${barsik.configuration.wallposts.dailySchedule}")
+
         val currentZoneId = ZoneId.of(barsik.configuration.wallposts.dailySchedule.timeZone)
         val amortizationSchedule = barsik.configuration.wallposts.dailySchedule.checkpoints
             .asSequence()
@@ -89,22 +92,26 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             }
             .toList()
 
+        logInfo("New schedule after amortization is $amortizationSchedule")
+
         val (currentDate, currentScheduleCheckpoint) = LocalDate.now(currentZoneId) to
             amortizationSchedule.lastOrNull() { checkpoint ->
                 LocalTime.parse(checkpoint.at).isBefore(LocalTime.now(currentZoneId))
             }
 
         if (currentScheduleCheckpoint == null) {
-            logInfo("None checkpoints were reached. It seems the time has not come yet. schedule=${barsik.configuration.wallposts.dailySchedule.checkpoints}, schedule with amortization=$amortizationSchedule")
+            logInfo("None checkpoints were reached. It seems the time has not come yet")
             return DailyScheduleWatchingResult(success = true)
         }
 
+        logInfo("Getting today wallposts from domain=${barsik.configuration.wallposts.domain}")
         val todayWallposts =
             barsik.getVkTodayWallposts(
                 domain = barsik.configuration.wallposts.domain,
                 today = currentDate,
                 zone = currentZoneId,
             )
+        logInfo("Got today wallposts: $todayWallposts")
 
         if (todayWallposts.failureOrNull() != null) {
             logError(todayWallposts.failureOrNull()!!.cause)
@@ -147,6 +154,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             return DailyScheduleWatchingResult(success = true)
         }
 
+        logInfo("Getting content providers")
         val mediaProviders =
             barsik.configuration.content.providers
                 .asSequence()
@@ -158,6 +166,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     keySelector = { (media, _) -> media },
                     valueTransform = { (_, provider) -> provider },
                 )
+        logInfo("Got providers: $mediaProviders")
 
         if (mediaProviders[Content.Provider.Media.MUSIC]?.isEmpty() ?: true ||
             mediaProviders[Content.Provider.Media.IMAGES]?.isEmpty() ?: true
@@ -175,14 +184,17 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         var musicAttachments =
             buildList {
                 for (limit in 1..5) {
+                    val domain = mediaProviders[Content.Provider.Media.MUSIC]!!.getRandomProvider().domain
+                    logInfo("Getting music attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
-                            domain = mediaProviders[Content.Provider.Media.MUSIC]!!.getRandomProvider().domain,
+                            domain = domain,
                             count = barsik.configuration.content.settings.takeMusicAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.AUDIO,
                         ).peekFailure { logError(it.cause) }
                         .recover { mutableListOf() }
                         .let {
+                            logInfo("Got music attachments from domain=$domain: $it")
                             it.forEach {
                                 if (this.size < barsik.configuration.content.settings.musicAttachmentsCollectorSize) {
                                     add(it)
@@ -197,14 +209,17 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         var photoAttachments =
             buildList {
                 for (limit in 1..5) {
+                    val domain = mediaProviders[Content.Provider.Media.IMAGES]!!.getRandomProvider().domain
+                    logInfo("Getting photo attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
-                            domain = mediaProviders[Content.Provider.Media.IMAGES]!!.getRandomProvider().domain,
+                            domain = domain,
                             count = barsik.configuration.content.settings.takeImagesAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.PHOTO,
                         ).peekFailure { logError(it.cause) }
                         .recover { mutableListOf() }
                         .let {
+                            logInfo("Got photo attachments from domain=$domain: $it")
                             it.forEach {
                                 if (this.size < barsik.configuration.content.settings.imagesAttachmentsCollectorSize) {
                                     add(it)
@@ -216,6 +231,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 }
             }
 
+        logInfo("Getting communities/users from attachements")
         val communities =
             photoAttachments
                 .asSequence()
@@ -238,6 +254,9 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     .filter { !it.audio!!.isCommunityOwner() }
                     .map { it.audio!!.ownerId }
                     .toList()
+        logInfo("Got communities/users from attachements: communities=$communities, users=$users")
+
+        logInfo("Getting open user accounts for sharing attachments")
 
         val openSharingAttachmentsUsers =
             barsik
@@ -247,6 +266,10 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .recover { listOf() }
                 .associateBy { it.id }
 
+        logInfo("Got open user accounts for sharing attachments: ${openSharingAttachmentsUsers.keys}")
+
+        logInfo("Getting open communities for sharing attachments")
+
         val openSharingAttachmentsCommunities =
             barsik
                 .getVkGroups(communities.map { it * -1 }.distinct())
@@ -255,12 +278,18 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .recover { listOf() }
                 .associateBy { it.id * -1 }
 
+        logInfo("Got open communities for sharing attachments: ${openSharingAttachmentsCommunities.keys}")
+
         val openSharingOwnerIds =
             users.filter { it !in openSharingAttachmentsUsers || openSharingAttachmentsUsers[it]!!.isOpenAccount() } +
                 communities.filter { it !in openSharingAttachmentsCommunities || openSharingAttachmentsCommunities[it]!!.isOpenCommunity() }
 
+        logInfo("Filtered actually open ownerIds: $openSharingOwnerIds")
+
         musicAttachments = musicAttachments.filter { it.audio!!.ownerId in openSharingOwnerIds }
         photoAttachments = photoAttachments.filter { it.photo!!.ownerId in openSharingOwnerIds }
+
+        logInfo("Filtered open music/photo attachments: music=$musicAttachments, photos=$photoAttachments")
 
         if (musicAttachments.isEmpty()) {
             return DailyScheduleWatchingResult(
@@ -277,6 +306,12 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 sendTelegram = true,
             )
         }
+
+        logInfo(
+            "Requesting LLM about music attachments. " +
+                "temperature=${barsik.configuration.llm.audioPromt.temperature}, " +
+                "promtMessage=${barsik.configuration.llm.audioPromt.systemInstruction}"
+        )
 
         val llmAudioResponse =
             barsik.askTextGpt(
@@ -296,6 +331,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         ),
                     ),
             )
+
+        logInfo("Got LLM response about music attachments. response=${llmAudioResponse.valueOrNull() ?: "error"}")
 
         if (llmAudioResponse.failureOrNull() != null) {
             logError(llmAudioResponse.failureOrNull()!!.cause)
@@ -321,6 +358,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
+        logInfo("Downloading images from the Internet")
+
         val downloadedImages =
             photoAttachments
                 .asSequence()
@@ -336,6 +375,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .map { it.first to it.second.valueOrNull()!! }
                 .toList()
 
+        logInfo("Downloaded images from the Internet: ${downloadedImages.map { (attachment, _) -> attachment }}")
+
         if (downloadedImages.isEmpty()) {
             return DailyScheduleWatchingResult(
                 success = false,
@@ -343,6 +384,12 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 sendTelegram = true,
             )
         }
+
+        logInfo(
+            "Requesting LLM about photo attachments. " +
+                "temperature=${barsik.configuration.llm.photoPromt.temperature}, " +
+                "promtMessage=${barsik.configuration.llm.photoPromt.systemInstruction}"
+        )
 
         val llmPhotoResponse =
             downloadedImages.windowed(3, 3, partialWindows = true).map { windowed ->
@@ -375,6 +422,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         },
                 )
             }
+
+        logInfo("Got LLM response about photo attachments. response=${llmPhotoResponse.mapNotNull { it.valueOrNull() }}")
 
         if (llmPhotoResponse.all { it.failureOrNull() != null }) {
             llmPhotoResponse.filter { it.failureOrNull() != null }.forEach { logError(it.failureOrNull()!!.cause) }
@@ -415,6 +464,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .filter { it.approval >= barsik.configuration.content.settings.musicLlmApprovalThreshold }
                 .associateBy { it.band }
 
+        logInfo("Approved by LLM music: ${approvedBands.keys}")
+
         val approvedPhotos =
             llmPhotoResult
                 .asSequence()
@@ -423,6 +474,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .flatMap { it.result }
                 .filter { it.approval }
                 .associateBy { it.photo }
+
+        logInfo("Approved by LLM photos: ${approvedPhotos.keys}")
 
         val resultingMusicAttachments = musicAttachments.filter { it.audio!!.artist in approvedBands }
         val resultingPhotoAttachments = photoAttachments.filter { it.photo!!.id.toString() in approvedPhotos }
@@ -446,6 +499,10 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val approvedMusicAttachment = resultingMusicAttachments.getRandomAttachment()
         val approvedPhotoAttachment = resultingPhotoAttachments.getRandomAttachment()
 
+        logInfo("Resulting attachments: music=$approvedMusicAttachment, photo=$approvedPhotoAttachment")
+
+        logInfo("Creating post in VK for domain=${barsik.configuration.wallposts.domain}")
+
         val createdPost =
             barsik
                 .createVkWallpost(
@@ -464,6 +521,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         ),
                 ).peekFailure { logError(it.cause) }
 
+        logInfo("Got result of creating a post in VK. response=${createdPost.valueOrNull() ?: "error"}")
+
         if (createdPost.failureOrNull() != null) {
             return DailyScheduleWatchingResult(
                 success = false,
@@ -472,6 +531,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
+        logInfo("Scenario is completely played")
         return DailyScheduleWatchingResult(
             success = true,
             message =

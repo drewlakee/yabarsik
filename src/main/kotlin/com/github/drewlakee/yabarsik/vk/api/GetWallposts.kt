@@ -173,8 +173,12 @@ fun VkApi.takeAttachmentsRandomly(
                                 val last = buffer.removeLast()
                                 val value = if (j < buffer.size) buffer.set(j, last) else last
                                 with(value.attachments.firstOrNull { attachment -> attachment.type == type }) {
-                                    if (this != null) {
-                                        attachments.add(this)
+                                    when {
+                                        this == null -> {}
+                                        this.type == VkWallpostsAttachmentType.AUDIO -> if (this.audio!!.url.isNotBlank()) {
+                                            attachments.add(this)
+                                        }
+                                        else -> attachments.add(this)
                                     }
                                 }
                             }
