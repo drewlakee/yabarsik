@@ -139,15 +139,18 @@ fun VkApi.getTodayWallpost(domain: String, today: LocalDate, zone: ZoneId): Resu
         )
     }
 
+data class RandomVkAttachments(
+    val wallpostsCount: Int,
+    val attachments: List<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>,
+)
+
 fun VkApi.takeAttachmentsRandomly(
     domain: String,
     count: Int,
     type: VkWallpostsAttachmentType,
-): Result4k<
-    List<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>,
-    RemoteRequestFailed,
-> =
-    getTotalWallpostsCount(domain)
+    domainWallpostsCount: Int?,
+): Result4k<RandomVkAttachments, RemoteRequestFailed> =
+    (domainWallpostsCount?.let(::Success) ?: getTotalWallpostsCount(domain))
         .map { totalWallpostsCount ->
             buildList {
                 for (limit in 1..10) {
@@ -193,5 +196,10 @@ fun VkApi.takeAttachmentsRandomly(
                             }
                         }
                 }
+            }.let {
+                RandomVkAttachments(
+                    wallpostsCount = totalWallpostsCount,
+                    attachments = it,
+                )
             }
         }.peekFailure { logError(it.cause) }

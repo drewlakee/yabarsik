@@ -84,10 +84,12 @@ class Barsik(
         domain: String,
         count: Int,
         type: VkWallpostsAttachmentType,
+        domainWallpostsCount: Int? = null,
     ) = vkApi.takeAttachmentsRandomly(
         domain = domain,
         count = count,
         type = type,
+        domainWallpostsCount = domainWallpostsCount,
     )
     
     fun createVkWallpost(attachments: List<VkPostWallpostAttachment>, publishDate: Long? = null) = vkApi.invoke(

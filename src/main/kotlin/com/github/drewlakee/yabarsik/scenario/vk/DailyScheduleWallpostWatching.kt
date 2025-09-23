@@ -181,21 +181,25 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
+        val domainWallpostsCountMemoization = mutableMapOf<String, Int>()
+
         var musicAttachments =
             buildList {
                 for (limit in 1..5) {
                     val domain = mediaProviders[Content.Provider.Media.MUSIC]!!.getRandomProvider().domain
+                    val domainWallpostsCount = domainWallpostsCountMemoization[domain]
                     logInfo("Getting music attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = domain,
                             count = barsik.configuration.content.settings.takeMusicAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.AUDIO,
+                            domainWallpostsCount = domainWallpostsCount,
                         ).peekFailure { logError(it.cause) }
-                        .recover { mutableListOf() }
-                        .let {
-                            logInfo("Got music attachments from domain=$domain [${it.size}]: $it")
-                            it.forEach {
+                        .valueOrNull()?.let {
+                            domainWallpostsCountMemoization[domain] = it.wallpostsCount
+                            logInfo("Got music attachments from domain=$domain [${it.attachments.size}]: $it")
+                            it.attachments.forEach {
                                 if (this.size < barsik.configuration.content.settings.musicAttachmentsCollectorSize) {
                                     add(it)
                                 } else {
@@ -210,17 +214,19 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             buildList {
                 for (limit in 1..5) {
                     val domain = mediaProviders[Content.Provider.Media.IMAGES]!!.getRandomProvider().domain
+                    val domainWallpostsCount = domainWallpostsCountMemoization[domain]
                     logInfo("Getting photo attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = domain,
                             count = barsik.configuration.content.settings.takeImagesAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.PHOTO,
+                            domainWallpostsCount = domainWallpostsCount,
                         ).peekFailure { logError(it.cause) }
-                        .recover { mutableListOf() }
-                        .let {
-                            logInfo("Got photo attachments from domain=$domain [${it.size}]: $it")
-                            it.forEach {
+                        .valueOrNull()?.let {
+                            domainWallpostsCountMemoization[domain] = it.wallpostsCount
+                            logInfo("Got photo attachments from domain=$domain [${it.attachments.size}]: $it")
+                            it.attachments.forEach {
                                 if (this.size < barsik.configuration.content.settings.imagesAttachmentsCollectorSize) {
                                     add(it)
                                 } else {
