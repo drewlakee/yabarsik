@@ -111,7 +111,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 today = currentDate,
                 zone = currentZoneId,
             )
-        logInfo("Got today wallposts: $todayWallposts")
+        logInfo("Got today wallposts [${todayWallposts.valueOrNull()?.response?.items?.size ?: "error"}]: ${todayWallposts.valueOrNull() ?: "error"}")
 
         if (todayWallposts.failureOrNull() != null) {
             logError(todayWallposts.failureOrNull()!!.cause)
@@ -166,7 +166,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     keySelector = { (media, _) -> media },
                     valueTransform = { (_, provider) -> provider },
                 )
-        logInfo("Got providers: $mediaProviders")
+        logInfo("Got providers [${mediaProviders.size}]: $mediaProviders")
 
         if (mediaProviders[Content.Provider.Media.MUSIC]?.isEmpty() ?: true ||
             mediaProviders[Content.Provider.Media.IMAGES]?.isEmpty() ?: true
@@ -194,7 +194,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         ).peekFailure { logError(it.cause) }
                         .recover { mutableListOf() }
                         .let {
-                            logInfo("Got music attachments from domain=$domain: $it")
+                            logInfo("Got music attachments from domain=$domain [${it.size}]: $it")
                             it.forEach {
                                 if (this.size < barsik.configuration.content.settings.musicAttachmentsCollectorSize) {
                                     add(it)
@@ -219,7 +219,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         ).peekFailure { logError(it.cause) }
                         .recover { mutableListOf() }
                         .let {
-                            logInfo("Got photo attachments from domain=$domain: $it")
+                            logInfo("Got photo attachments from domain=$domain [${it.size}]: $it")
                             it.forEach {
                                 if (this.size < barsik.configuration.content.settings.imagesAttachmentsCollectorSize) {
                                     add(it)
@@ -284,7 +284,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             users.filter { it !in openSharingAttachmentsUsers || openSharingAttachmentsUsers[it]!!.isOpenAccount() } +
                 communities.filter { it !in openSharingAttachmentsCommunities || openSharingAttachmentsCommunities[it]!!.isOpenCommunity() }
 
-        logInfo("Filtered actually open ownerIds: $openSharingOwnerIds")
+        logInfo("Filtered potentially open ownerIds: $openSharingOwnerIds")
 
         musicAttachments = musicAttachments.filter { it.audio!!.ownerId in openSharingOwnerIds }
         photoAttachments = photoAttachments.filter { it.photo!!.ownerId in openSharingOwnerIds }
