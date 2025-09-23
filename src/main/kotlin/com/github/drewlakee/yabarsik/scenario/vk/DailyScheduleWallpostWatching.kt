@@ -535,11 +535,6 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     .url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
                 
                 Положил на [страничку](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId})!
-                
-                ```дебаг_инфа
-                photoOwnerId=${approvedPhotoAttachment.photo.ownerId}
-                audioOwnerId=${approvedMusicAttachment.audio.ownerId}
-                ```
                 """.trimIndent(),
             sendTelegram = true,
         )
