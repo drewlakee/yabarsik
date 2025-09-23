@@ -43,14 +43,8 @@ data class VkWallposts(
                 data class VkWallpostsAttachmentPhoto(
                     val id: Int,
                     @field:JsonProperty("owner_id") val ownerId: Int,
-                    val sizes: List<Size>,
                     @field:JsonProperty("orig_photo") val origPhoto: VkWallpostsAttachmentPhotoOrig?,
                 ) {
-                    data class Size(
-                        val height: Int,
-                        val width: Int,
-                        val url: String,
-                    )
                     data class VkWallpostsAttachmentPhotoOrig(
                         val height: Int,
                         val width: Int,
@@ -140,7 +134,7 @@ fun VkApi.getTodayWallpost(domain: String, today: LocalDate, zone: ZoneId): Resu
     }
 
 data class RandomVkAttachments(
-    val wallpostsCount: Int,
+    val totalWallpostsCount: Int,
     val attachments: List<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>,
 )
 
@@ -181,6 +175,9 @@ fun VkApi.takeAttachmentsRandomly(
                                         this.type == VkWallpostsAttachmentType.AUDIO -> if (this.audio!!.url.isNotBlank()) {
                                             attachments.add(this)
                                         }
+                                        this.type == VkWallpostsAttachmentType.PHOTO -> if (this.photo!!.origPhoto != null) {
+                                            attachments.add(this)
+                                        }
                                         else -> attachments.add(this)
                                     }
                                 }
@@ -198,7 +195,7 @@ fun VkApi.takeAttachmentsRandomly(
                 }
             }.let {
                 RandomVkAttachments(
-                    wallpostsCount = totalWallpostsCount,
+                    totalWallpostsCount = totalWallpostsCount,
                     attachments = it,
                 )
             }

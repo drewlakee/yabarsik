@@ -188,7 +188,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 for (limit in 1..5) {
                     val domain = mediaProviders[Content.Provider.Media.MUSIC]!!.getRandomProvider().domain
                     val domainWallpostsCount = domainWallpostsCountMemoization[domain]
-                    logInfo("Getting music attachments from domain=$domain")
+                    this@DailyScheduleWatching.logInfo("Getting music attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = domain,
@@ -197,8 +197,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             domainWallpostsCount = domainWallpostsCount,
                         ).peekFailure { logError(it.cause) }
                         .valueOrNull()?.let {
-                            domainWallpostsCountMemoization[domain] = it.wallpostsCount
-                            logInfo("Got music attachments from domain=$domain [${it.attachments.size}]: $it")
+                            domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
+                            this@DailyScheduleWatching.logInfo("Got music attachments from domain=$domain [${it.attachments.size}]: $it")
                             it.attachments.forEach {
                                 if (this.size < barsik.configuration.content.settings.musicAttachmentsCollectorSize) {
                                     add(it)
@@ -215,7 +215,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 for (limit in 1..5) {
                     val domain = mediaProviders[Content.Provider.Media.IMAGES]!!.getRandomProvider().domain
                     val domainWallpostsCount = domainWallpostsCountMemoization[domain]
-                    logInfo("Getting photo attachments from domain=$domain")
+                    this@DailyScheduleWatching.logInfo("Getting photo attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = domain,
@@ -224,8 +224,8 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             domainWallpostsCount = domainWallpostsCount,
                         ).peekFailure { logError(it.cause) }
                         .valueOrNull()?.let {
-                            domainWallpostsCountMemoization[domain] = it.wallpostsCount
-                            logInfo("Got photo attachments from domain=$domain [${it.attachments.size}]: $it")
+                            domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
+                            this@DailyScheduleWatching.logInfo("Got photo attachments from domain=$domain [${it.attachments.size}]: $it")
                             it.attachments.forEach {
                                 if (this.size < barsik.configuration.content.settings.imagesAttachmentsCollectorSize) {
                                     add(it)
@@ -369,9 +369,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     it to
                         barsik.getImage(
                             url =
-                                it.photo!!.origPhoto?.url ?: it.photo.sizes
-                                    .last()
-                                    .url,
+                                it.photo!!.origPhoto!!.url,
                         )
                 }.filter { it.second.failureOrNull() == null }
                 .map { it.first to it.second.valueOrNull()!! }
@@ -536,9 +534,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 """
                 Ура! Я неплохо потрудился и вот, что у меня вышло, пойду отдыхать...
                 
-                [картиночка](${approvedPhotoAttachment.photo.origPhoto?.url ?: approvedPhotoAttachment.photo.sizes
-                    .last()
-                    .url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
+                [картиночка](${approvedPhotoAttachment.photo.origPhoto!!.url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
                 
                 Положил на [страничку](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId})!
                 """.trimIndent(),
