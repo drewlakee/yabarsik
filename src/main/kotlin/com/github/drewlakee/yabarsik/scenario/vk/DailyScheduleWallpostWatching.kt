@@ -307,11 +307,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
-        logInfo(
-            "Requesting LLM about music attachments. " +
-                "temperature=${barsik.configuration.llm.audioPromt.temperature}, " +
-                "promtMessage=${barsik.configuration.llm.audioPromt.systemInstruction}"
-        )
+        logInfo("Requesting LLM about music attachments")
 
         val llmAudioResponse =
             barsik.askTextGpt(
@@ -385,11 +381,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
-        logInfo(
-            "Requesting LLM about photo attachments. " +
-                "temperature=${barsik.configuration.llm.photoPromt.temperature}, " +
-                "promtMessage=${barsik.configuration.llm.photoPromt.systemInstruction}"
-        )
+        logInfo("Requesting LLM about photo attachments")
 
         val llmPhotoResponse =
             downloadedImages.windowed(3, 3, partialWindows = true).map { windowed ->
