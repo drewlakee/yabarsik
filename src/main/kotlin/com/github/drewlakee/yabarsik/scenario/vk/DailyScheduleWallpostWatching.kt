@@ -669,5 +669,3 @@ private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachmen
 
 private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentPhoto.isCommunityOwner() =
     ownerId < 0
-
-private fun DiscogsDatabaseResults.Result.getCompactOneLineInfo() = "жанры: $genre, стили жанров: "
