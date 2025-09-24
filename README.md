@@ -21,37 +21,38 @@
 
 # Деплой Барсика
 
-```kotlin
-tasks.register<Exec>("ycDeployFunction") {
-    dependsOn("ycFunctionZip")
+Для упрошенного деплоя окружений были написаны таски
 
-    workingDir = File("build/yc")
-    executable = providers.exec { commandLine( "which", "yc") }.standardOutput.asText.get().trimIndent()
-    args(
-        "serverless", "function", "version", "create",
-        "--function-name=yabarsik",
-        "--runtime=kotlin20",
-        "--entrypoint=com.github.drewlakee.yabarsik.YcHandler",
-        "--memory=1024m",
-        "--execution-timeout=5m",
-        "--source-path=ycFunction.zip",
-        "--service-account-id=ajeduks5d1ag7q1rkbo6",
-        // переменная для id-объекта конфигурации в S3
-        "--environment=CONFIGURATION_S3_OBJECT_ID=configuration.yml,CONFIGURATION_S3_BUCKET=yabarsik",
-        // переменная для доступа к телеграм каналу
-        "--secret=environment-variable=TELEGRAM_TOKEN,id=e6qunf2om3830utk4li6,key=token",
-        // переменная для доступа к конфигурации в S3
-        "--secret=environment-variable=AWS_ACCESS_KEY_ID,id=e6q7hvehrvtsf655otla,key=key-identifier",
-        // переменная для доступа к конфигурации в S3
-        "--secret=environment-variable=AWS_SECRET_ACCESS_KEY,id=e6q7hvehrvtsf655otla,key=secret-key",
-        // переменная для доступа к Yandex.Cloud Api-Key
-        "--secret=environment-variable=YANDEX_CLOUD_LLM_API_KEY,id=e6qeql4qbf61n4hcjkf4,key=secret-key",
-        // переменная для доступа к сервисному ключу Вконтакте
-        "--secret=environment-variable=VK_SERVICE_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=service",
-        // переменная для доступа к ключу сообщества Вконтакте (см. Конфигурация Барсика, communityId/domain)
-        "--secret=environment-variable=VK_COMMUNITY_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=community",
-    )
-}
+```kotlin
+tasks.register<Exec>("ycDeployFunctionProduction")
+tasks.register<Exec>("ycDeployFunctionTesting")
+```
+
+Переменные окружения и секреты для деплоя
+```kotlin
+// переменная для id-объекта конфигурации в S3
+"--environment=CONFIGURATION_S3_OBJECT_ID=configuration.yml,CONFIGURATION_S3_BUCKET=yabarsik"
+
+// переменная для доступа к телеграм каналу
+"--secret=environment-variable=TELEGRAM_TOKEN,id=e6qunf2om3830utk4li6,key=token"
+
+// переменная для доступа к конфигурации в S3
+"--secret=environment-variable=AWS_ACCESS_KEY_ID,id=e6q7hvehrvtsf655otla,key=key-identifier"
+
+// переменная для доступа к конфигурации в S3
+"--secret=environment-variable=AWS_SECRET_ACCESS_KEY,id=e6q7hvehrvtsf655otla,key=secret-key"
+
+// переменная для доступа к Yandex.Cloud Api-Key
+"--secret=environment-variable=YANDEX_CLOUD_LLM_API_KEY,id=e6qeql4qbf61n4hcjkf4,key=secret-key"
+
+// переменная для доступа к сервисному ключу Вконтакте
+"--secret=environment-variable=VK_SERVICE_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=service"
+
+// переменная для доступа к ключу сообщества Вконтакте (см. Конфигурация Барсика, communityId/domain)
+"--secret=environment-variable=VK_COMMUNITY_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=community"
+
+// переменная для доступа к токену DiscogsAPI
+"--secret=environment-variable=DISCOGS_TOKEN,id=e6qos1a86pmne2pehkgh,key=token"
 ```
 
 # Конфигурация Барсика
@@ -101,6 +102,8 @@ llm:
   # Пример промта для подбора музыки
   audioPromt:
     temperature: 0.3
+    # Используется для обогащения контекста для модели об исполнителях из discogs API 
+    discogsContext: 'В случае если ты совсем ничего не знаешь о данных исполнителях, то при оценке исполнителей ориентируйся на вспомогательные данные, полученные об исполнителях с сервиса discogs.com:'
     systemInstruction: 'Ты - опытный музыкальный слушатель и поклонник таких жанров как emo и midwest-emo, 
                                 ты также иногда не прочь послушать жанры как math-rock, melodic-hardcore, pop-punk. 
                                 Обычно ты используешь такие сервисы как bandcamp.com, spotify.com, last.fm, яндекс музыка.
