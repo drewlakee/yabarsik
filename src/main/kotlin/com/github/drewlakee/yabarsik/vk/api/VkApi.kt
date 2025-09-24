@@ -34,7 +34,7 @@ interface VkApi {
 }
 
 fun VkApi.Companion.Http() = object : VkApi {
-    private val http = SetBaseUriFrom(Uri.of("https://api.vk.com"))
+    private val http = SetBaseUriFrom(Uri.of("https://api.vk.ru"))
         .then(SetHeader("Accept", "application/json"))
         .then(OkHttp())
 
