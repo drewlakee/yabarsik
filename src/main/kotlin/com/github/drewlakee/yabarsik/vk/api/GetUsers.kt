@@ -45,7 +45,7 @@ data class GetUsers(val userIds: List<Int>): VkApiAction<VkUsers> {
                     if (it.isSuccess) {
                         Success(it.getOrNull()!!)
                     } else {
-                        logError(IllegalArgumentException("status=${response.status}, body=${response.bodyString()}", it.exceptionOrNull()))
+                        logError(it.exceptionOrNull())
                         Failure(RemoteRequestFailed(response.status, response.bodyString()))
                     }
                 }

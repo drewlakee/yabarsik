@@ -54,7 +54,7 @@ fun YandexS3Api.Companion.Http() = object : YandexS3Api {
                     configuration = it.getOrThrow(),
                 ))
             } else {
-                logError(it.exceptionOrNull()!!)
+                logError(it.exceptionOrNull())
                 return Failure(it.exceptionOrNull()!!)
             }
         }

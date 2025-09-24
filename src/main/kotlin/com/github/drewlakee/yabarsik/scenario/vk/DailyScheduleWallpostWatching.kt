@@ -8,6 +8,8 @@ import com.github.drewlakee.yabarsik.BarsikGptTextMessage
 import com.github.drewlakee.yabarsik.BarsilGptImageUrlMessage
 import com.github.drewlakee.yabarsik.SimpleGptResponse
 import com.github.drewlakee.yabarsik.configuration.Content
+import com.github.drewlakee.yabarsik.discogs.api.CompactArtistTrackInfo
+import com.github.drewlakee.yabarsik.discogs.api.DiscogsDatabaseResults
 import com.github.drewlakee.yabarsik.logError
 import com.github.drewlakee.yabarsik.logInfo
 import com.github.drewlakee.yabarsik.scenario.BarsikScenario
@@ -104,14 +106,14 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             return DailyScheduleWatchingResult(success = true)
         }
 
-        logInfo("Getting today wallposts from domain=${barsik.configuration.wallposts.domain}")
+        logInfo("Requesting today wallposts from domain=${barsik.configuration.wallposts.domain}")
         val todayWallposts =
             barsik.getVkTodayWallposts(
                 domain = barsik.configuration.wallposts.domain,
                 today = currentDate,
                 zone = currentZoneId,
             )
-        logInfo("Got today wallposts [${todayWallposts.valueOrNull()?.response?.items?.size ?: "error"}]: ${todayWallposts.valueOrNull() ?: "error"}")
+        logInfo("Response today wallposts [${todayWallposts.valueOrNull()?.response?.items?.size ?: "error"}]: ${todayWallposts.valueOrNull() ?: "error"}")
 
         if (todayWallposts.failureOrNull() != null) {
             logError(todayWallposts.failureOrNull()!!.cause)
@@ -154,7 +156,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             return DailyScheduleWatchingResult(success = true)
         }
 
-        logInfo("Getting content providers")
+        logInfo("Collecting content providers")
         val mediaProviders =
             barsik.configuration.content.providers
                 .asSequence()
@@ -188,7 +190,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 for (limit in 1..5) {
                     val domain = mediaProviders[Content.Provider.Media.MUSIC]!!.getRandomProvider().domain
                     val domainWallpostsCount = domainWallpostsCountMemoization[domain]
-                    this@DailyScheduleWatching.logInfo("Getting music attachments from domain=$domain")
+                    this@DailyScheduleWatching.logInfo("Requesting music attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = domain,
@@ -198,7 +200,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         ).peekFailure { logError(it.cause) }
                         .valueOrNull()?.let {
                             domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
-                            this@DailyScheduleWatching.logInfo("Got music attachments from domain=$domain [${it.attachments.size}]: $it")
+                            this@DailyScheduleWatching.logInfo("Response music attachments from domain=$domain [${it.attachments.size}]: $it")
                             it.attachments.forEach {
                                 if (this.size < barsik.configuration.content.settings.musicAttachmentsCollectorSize) {
                                     add(it)
@@ -215,7 +217,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 for (limit in 1..5) {
                     val domain = mediaProviders[Content.Provider.Media.IMAGES]!!.getRandomProvider().domain
                     val domainWallpostsCount = domainWallpostsCountMemoization[domain]
-                    this@DailyScheduleWatching.logInfo("Getting photo attachments from domain=$domain")
+                    this@DailyScheduleWatching.logInfo("Requesting photo attachments from domain=$domain")
                     barsik
                         .takeVkAttachmentsRandomly(
                             domain = domain,
@@ -225,7 +227,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                         ).peekFailure { logError(it.cause) }
                         .valueOrNull()?.let {
                             domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
-                            this@DailyScheduleWatching.logInfo("Got photo attachments from domain=$domain [${it.attachments.size}]: $it")
+                            this@DailyScheduleWatching.logInfo("Response photo attachments from domain=$domain [${it.attachments.size}]: $it")
                             it.attachments.forEach {
                                 if (this.size < barsik.configuration.content.settings.imagesAttachmentsCollectorSize) {
                                     add(it)
@@ -237,7 +239,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 }
             }
 
-        logInfo("Getting communities/users from attachements")
+        logInfo("Collecting communities/users from attachements")
         val communities =
             photoAttachments
                 .asSequence()
@@ -260,9 +262,9 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                     .filter { !it.audio!!.isCommunityOwner() }
                     .map { it.audio!!.ownerId }
                     .toList()
-        logInfo("Got communities/users from attachements: communities=$communities, users=$users")
+        logInfo("Resulting communities/users from attachements: communities=$communities, users=$users")
 
-        logInfo("Getting open user accounts for sharing attachments")
+        logInfo("Requesting open user accounts for sharing attachments")
 
         val openSharingAttachmentsUsers =
             barsik
@@ -272,9 +274,9 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .recover { listOf() }
                 .associateBy { it.id }
 
-        logInfo("Got open user accounts for sharing attachments: ${openSharingAttachmentsUsers.keys}")
+        logInfo("Response open user accounts for sharing attachments: ${openSharingAttachmentsUsers.keys}")
 
-        logInfo("Getting open communities for sharing attachments")
+        logInfo("Requesting open communities for sharing attachments")
 
         val openSharingAttachmentsCommunities =
             barsik
@@ -284,7 +286,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 .recover { listOf() }
                 .associateBy { it.id * -1 }
 
-        logInfo("Got open communities for sharing attachments: ${openSharingAttachmentsCommunities.keys}")
+        logInfo("Response open communities for sharing attachments: ${openSharingAttachmentsCommunities.keys}")
 
         val openSharingOwnerIds =
             users.filter { it !in openSharingAttachmentsUsers || openSharingAttachmentsUsers[it]!!.isOpenAccount() } +
@@ -313,25 +315,108 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
+        logInfo("Requesting Discogs about artists and music")
+
+        val discogsArtistTrackInfo = musicAttachments.asSequence()
+            .map { it.audio!!.artist to it.audio.title }
+            .mapNotNull { (artist, track) ->
+                logInfo("Requesting Discogs information for artist=$artist, track=$track")
+                val compactInfo = barsik.getDiscogsArtistTrackInfo(
+                    artist = artist,
+                    track = track,
+                ).peekFailure { logError(it.cause) }.valueOrNull()
+                logInfo("Response Discogs information for artist=$artist, track=$track: ${compactInfo ?: "error"}")
+                return@mapNotNull if (compactInfo != null) {
+                    artist to compactInfo
+                } else {
+                    null
+                }
+            }
+            .toList()
+
+        logInfo("Response Discogs about artists and music: $discogsArtistTrackInfo")
+
+        logInfo("Requesting Discogs about only artists")
+
+        val discogsArtistInfo = musicAttachments.asSequence()
+            .map { it.audio!!.artist }
+            .distinct()
+            .mapNotNull { artist ->
+                logInfo("Requesting Discogs information for artist=$artist")
+                val compactInfo = barsik.getDiscogsArtistTrackInfo(
+                    artist = artist,
+                ).peekFailure { logError(it.cause) }.valueOrNull()
+                logInfo("Response Discogs information for artist=$artist: ${compactInfo ?: "error"}")
+                return@mapNotNull if (compactInfo != null) {
+                    artist to compactInfo
+                } else {
+                    null
+                }
+            }
+            .toList()
+
+        logInfo("Response Discogs about only artists: $discogsArtistInfo")
+
+        val discogsArtistsInfo = (discogsArtistTrackInfo.asSequence() + discogsArtistInfo.asSequence())
+            .groupBy(
+                keySelector = { (artist, _) -> artist },
+                valueTransform = { (_, info) -> info }
+            )
+            .mapValues { (_, compactInfos) ->
+                val mergedLabels = mutableSetOf<String>()
+                val mergedGenres = mutableSetOf<String>()
+                val mergedStyles = mutableSetOf<String>()
+                val mergedReleaseTitles = mutableSetOf<String>()
+                compactInfos.forEach { info ->
+                    with(info) {
+                        labels.run(mergedLabels::addAll)
+                        genres.run(mergedGenres::addAll)
+                        styles.run(mergedStyles::addAll)
+                        releaseTitles.run(mergedReleaseTitles::addAll)
+                    }
+                }
+                CompactArtistTrackInfo(
+                    labels = mergedLabels,
+                    genres = mergedGenres,
+                    styles = mergedStyles,
+                    releaseTitles = mergedReleaseTitles,
+                )
+            }
+
         logInfo("Requesting LLM about music attachments")
 
         val llmAudioResponse =
             barsik.askTextGpt(
                 temperature = barsik.configuration.llm.audioPromt.temperature,
                 messages =
-                    listOf(
-                        BarsikGptTextMessage(
-                            role = CommonLlmMessageRole.SYSTEM,
-                            text = barsik.configuration.llm.audioPromt.systemInstruction,
-                        ),
-                        BarsikGptTextMessage(
-                            role = CommonLlmMessageRole.USER,
-                            text =
-                                musicAttachments.groupBy { it.audio!!.artist }.entries.joinToString(
-                                    separator = ", ",
-                                ) { (artist, _) -> artist },
-                        ),
-                    ),
+                    buildList {
+                        add(
+                            BarsikGptTextMessage(
+                                role = CommonLlmMessageRole.SYSTEM,
+                                text = barsik.configuration.llm.audioPromt.systemInstruction,
+                            )
+                        )
+
+                        if (discogsArtistInfo.isNotEmpty()) {
+                            add(
+                                BarsikGptTextMessage(
+                                    role = CommonLlmMessageRole.SYSTEM,
+                                    text = "${barsik.configuration.llm.audioPromt.discogsContext}\n" +
+                                        discogsArtistsInfo.entries.joinToString(separator = "\n") { (artist, compactInfo) -> "$artist: $compactInfo" },
+                                )
+                            )
+                        }
+
+                        add(
+                            BarsikGptTextMessage(
+                                role = CommonLlmMessageRole.USER,
+                                text =
+                                    musicAttachments.groupBy { it.audio!!.artist }.entries.joinToString(
+                                        separator = ", ",
+                                        ) { (artist, _) -> artist },
+                                )
+                        )
+                    },
             )
 
         logInfo("Got LLM response about music attachments. response=${llmAudioResponse.valueOrNull() ?: "error"}")
@@ -584,3 +669,5 @@ private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachmen
 
 private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment.VkWallpostsAttachmentPhoto.isCommunityOwner() =
     ownerId < 0
+
+private fun DiscogsDatabaseResults.Result.getCompactOneLineInfo() = "жанры: $genre, стили жанров: "

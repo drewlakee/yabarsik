@@ -1,6 +1,8 @@
 // https://yandex.cloud/ru/docs/functions/concepts/function-invoke
 package com.github.drewlakee.yabarsik
 
+import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
+import com.github.drewlakee.yabarsik.discogs.api.Http
 import com.github.drewlakee.yabarsik.images.Http
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.scenario.play
@@ -34,6 +36,7 @@ class YcHandler : YcFunction<Request, Response> {
                 yandexLlmModelsApi = YandexLlmModelsApi.Http(),
                 vkApi = VkApi.Http(),
                 imagesApi = ImagesApi.Http(),
+                discogsApi = DiscogsApi.Http(),
             )
         }
 

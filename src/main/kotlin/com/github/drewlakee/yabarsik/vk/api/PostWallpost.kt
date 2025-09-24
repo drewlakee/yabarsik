@@ -3,6 +3,7 @@ package com.github.drewlakee.yabarsik.vk.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_COMMUNITY_ACCESS_TOKEN
+import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -48,6 +49,7 @@ data class PostWallpost(
             if (it.isSuccess) {
                 Success(it.getOrNull()!!)
             } else {
+                logError(it.exceptionOrNull())
                 Failure(RemoteRequestFailed(response.status, response.bodyString()))
             }
         }

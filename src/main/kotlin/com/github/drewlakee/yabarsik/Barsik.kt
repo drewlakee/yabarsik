@@ -2,6 +2,8 @@ package com.github.drewlakee.yabarsik
 
 import com.github.drewlakee.yabarsik.configuration.BarsikConfiguration
 import com.github.drewlakee.yabarsik.configuration.Llm
+import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
+import com.github.drewlakee.yabarsik.discogs.api.getCompactArtistTrackInfo
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
@@ -10,7 +12,6 @@ import com.github.drewlakee.yabarsik.vk.api.GetUsers
 import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
-import com.github.drewlakee.yabarsik.vk.api.VkUsers
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostsAttachmentType
 import com.github.drewlakee.yabarsik.vk.api.getTodayWallpost
 import com.github.drewlakee.yabarsik.vk.api.takeAttachmentsRandomly
@@ -38,6 +39,7 @@ class Barsik(
     private val yandexLlmModelsApi: YandexLlmModelsApi,
     private val vkApi: VkApi,
     private val imagesApi: ImagesApi,
+    private val discogsApi: DiscogsApi,
     yandexS3Api: YandexS3Api,
 ) {
     val configuration: BarsikConfiguration = yandexS3Api
@@ -91,6 +93,15 @@ class Barsik(
         type = type,
         domainWallpostsCount = domainWallpostsCount,
     )
+
+    fun getDiscogsArtistTrackInfo(
+        artist: String,
+        track: String? = null,
+    ) = discogsApi.getCompactArtistTrackInfo(
+        artist = artist,
+        track = track,
+    )
+
     
     fun createVkWallpost(attachments: List<VkPostWallpostAttachment>, publishDate: Long? = null) = vkApi.invoke(
         PostWallpost(

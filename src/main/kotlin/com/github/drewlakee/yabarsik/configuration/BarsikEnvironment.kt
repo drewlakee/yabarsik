@@ -7,6 +7,7 @@ object BarsikEnvironment {
     val YANDEX_CLOUD_LLM_API_KEY = "YANDEX_CLOUD_LLM_API_KEY".getOrThrow()
     val CONFIGURATION_S3_OBJECT_ID = "CONFIGURATION_S3_OBJECT_ID".getOrThrow()
     val CONFIGURATION_S3_BUCKET = "CONFIGURATION_S3_BUCKET".getOrThrow()
+    val DISCOGS_TOKEN = "DISCOGS_TOKEN".getOrThrow()
 }
 
 private fun String.getOrThrow(): String = if (System.getenv(this) == null) {

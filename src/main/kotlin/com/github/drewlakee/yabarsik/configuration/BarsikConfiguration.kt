@@ -46,7 +46,7 @@ data class Llm(
 
     data class TextGtp(val model: String, val api: Api)
     data class MultiModalGpt(val model: String, val api: Api)
-    data class AudioPromt(val temperature: Float, val systemInstruction: String)
+    data class AudioPromt(val temperature: Float, val discogsContext: String, val systemInstruction: String)
     data class PhotoPromt(val temperature: Float, val systemInstruction: String)
 }
 
