@@ -68,6 +68,7 @@ tasks.register<Exec>("ycDeployFunctionProduction") {
         "--secret=environment-variable=YANDEX_CLOUD_LLM_API_KEY,id=e6qeql4qbf61n4hcjkf4,key=secret-key",
         "--secret=environment-variable=VK_SERVICE_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=service",
         "--secret=environment-variable=VK_COMMUNITY_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=community",
+        "--secret=environment-variable=DISCOGS_TOKEN,id=e6qos1a86pmne2pehkgh,key=token",
     )
 }
 
@@ -93,5 +94,6 @@ tasks.register<Exec>("ycDeployFunctionTesting") {
         "--secret=environment-variable=YANDEX_CLOUD_LLM_API_KEY,id=e6qeql4qbf61n4hcjkf4,key=secret-key",
         "--secret=environment-variable=VK_SERVICE_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=service",
         "--secret=environment-variable=VK_COMMUNITY_ACCESS_TOKEN,id=e6q9r81vfhv26ue9uumv,key=community-testing",
+        "--secret=environment-variable=DISCOGS_TOKEN,id=e6qos1a86pmne2pehkgh,key=token",
     )
 }
