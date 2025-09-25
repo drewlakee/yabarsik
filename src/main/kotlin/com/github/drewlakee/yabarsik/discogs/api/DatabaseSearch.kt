@@ -61,43 +61,48 @@ data class DatabaseSearch(
         }
 }
 
-data class CompactArtistTrackInfo(
-    val labels: Set<String>,
-    val genres: Set<String>,
-    val styles: Set<String>,
-    val releaseTitles: Set<String>,
+data class ArtistReleases(
+    val artist: String,
+    val releases: List<Release>,
 ) {
-    override fun toString() = "жанры: $genres, стили жанров: $styles, названия релизов: $releaseTitles, музыкальные лейблы: $labels"
+    data class Release(val title: String, val genres: Set<String>, val styles: Set<String>, val labels: Set<String>)
+
+    override fun toString() = buildString {
+        append(artist).append(": ")
+        releases.joinToString(prefix = "[", separator = ",", postfix = "]") { release ->
+            with(release) {
+                buildString {
+                    append("(")
+                    append("release title: ").append(title).append("; ")
+                    append("genres: ").append(genres.joinToString(separator = ",")).append("; ")
+                    append("styles: ").append(styles.joinToString(separator = ",")).append("; ")
+                    append("labels: ").append(labels.joinToString(separator = ","))
+                    append(")")
+                }
+            }
+        }.run(::append)
+    }
 }
 
-fun DiscogsApi.getCompactArtistTrackInfo(
+fun DiscogsApi.getArtistReleases(
     artist: String,
     track: String? = null,
-): Result4k<CompactArtistTrackInfo, RemoteRequestFailed> =
+): Result4k<ArtistReleases, RemoteRequestFailed> =
     invoke(
         DatabaseSearch(
             artist = artist,
             track = track,
         ),
-    ).map { mergedArtistTrackResults ->
-        val labels = mutableSetOf<String>()
-        val genres = mutableSetOf<String>()
-        val styles = mutableSetOf<String>()
-        val releaseTitles = mutableSetOf<String>()
-
-        mergedArtistTrackResults.results.forEach { result ->
-            with(result) {
-                label?.run(labels::addAll)
-                genre?.run(genres::addAll)
-                style?.run(styles::addAll)
-                title.run(releaseTitles::add)
+    ).map { response ->
+        ArtistReleases(
+            artist = artist,
+            releases = response.results.map { release ->
+                ArtistReleases.Release(
+                    title = release.title,
+                    genres = release.genre?.toSet() ?: setOf(),
+                    styles = release.style?.toSet() ?: setOf(),
+                    labels = release.label?.toSet() ?: setOf(),
+                )
             }
-        }
-
-        CompactArtistTrackInfo(
-            labels = labels,
-            genres = genres,
-            styles = styles,
-            releaseTitles = releaseTitles,
         )
     }

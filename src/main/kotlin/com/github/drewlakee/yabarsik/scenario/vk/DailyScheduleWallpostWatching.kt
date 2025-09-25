@@ -8,8 +8,7 @@ import com.github.drewlakee.yabarsik.BarsikGptTextMessage
 import com.github.drewlakee.yabarsik.BarsilGptImageUrlMessage
 import com.github.drewlakee.yabarsik.SimpleGptResponse
 import com.github.drewlakee.yabarsik.configuration.Content
-import com.github.drewlakee.yabarsik.discogs.api.CompactArtistTrackInfo
-import com.github.drewlakee.yabarsik.discogs.api.DiscogsDatabaseResults
+import com.github.drewlakee.yabarsik.discogs.api.ArtistReleases
 import com.github.drewlakee.yabarsik.logError
 import com.github.drewlakee.yabarsik.logInfo
 import com.github.drewlakee.yabarsik.scenario.BarsikScenario
@@ -315,73 +314,52 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             )
         }
 
-        logInfo("Requesting Discogs about artists and music")
+        logInfo("Requesting Discogs artist and track releases")
 
-        val discogsArtistTrackInfo = musicAttachments.asSequence()
+        val discogsArtistTrackReleases = musicAttachments.asSequence()
             .map { it.audio!!.artist to it.audio.title }
             .mapNotNull { (artist, track) ->
-                logInfo("Requesting Discogs information for artist=$artist, track=$track")
-                val compactInfo = barsik.getDiscogsArtistTrackInfo(
+                logInfo("Requesting Discogs releases for artist=$artist, track=$track")
+                val artistTrackReleases = barsik.getArtistReleases(
                     artist = artist,
                     track = track,
                 ).peekFailure { logError(it.cause) }.valueOrNull()
-                logInfo("Response Discogs information for artist=$artist, track=$track: ${compactInfo ?: "error"}")
-                return@mapNotNull if (compactInfo != null) {
-                    artist to compactInfo
-                } else {
-                    null
-                }
+                logInfo("Response Discogs releases for artist=$artist, track=$track: ${artistTrackReleases ?: "error"}")
+                artistTrackReleases
             }
             .toList()
 
-        logInfo("Response Discogs about artists and music: $discogsArtistTrackInfo")
+        logInfo("Response Discogs artist and track releases: $discogsArtistTrackReleases")
 
-        logInfo("Requesting Discogs about only artists")
+        logInfo("Requesting Discogs releases only by artists")
 
-        val discogsArtistInfo = musicAttachments.asSequence()
+        val discogsOnlyArtistReleases = musicAttachments.asSequence()
             .map { it.audio!!.artist }
             .distinct()
             .mapNotNull { artist ->
-                logInfo("Requesting Discogs information for artist=$artist")
-                val compactInfo = barsik.getDiscogsArtistTrackInfo(
+                logInfo("Requesting Discogs releases for artist=$artist")
+                val artistReleases = barsik.getArtistReleases(
                     artist = artist,
                 ).peekFailure { logError(it.cause) }.valueOrNull()
-                logInfo("Response Discogs information for artist=$artist: ${compactInfo ?: "error"}")
-                return@mapNotNull if (compactInfo != null) {
-                    artist to compactInfo
-                } else {
-                    null
-                }
+                logInfo("Response Discogs releases for artist=$artist: ${artistReleases ?: "error"}")
+                artistReleases
             }
             .toList()
 
-        logInfo("Response Discogs about only artists: $discogsArtistInfo")
+        logInfo("Response Discogs releases only by artists: $discogsOnlyArtistReleases")
 
-        val discogsArtistsInfo = (discogsArtistTrackInfo.asSequence() + discogsArtistInfo.asSequence())
-            .groupBy(
-                keySelector = { (artist, _) -> artist },
-                valueTransform = { (_, info) -> info }
-            )
-            .mapValues { (_, compactInfos) ->
-                val mergedLabels = mutableSetOf<String>()
-                val mergedGenres = mutableSetOf<String>()
-                val mergedStyles = mutableSetOf<String>()
-                val mergedReleaseTitles = mutableSetOf<String>()
-                compactInfos.forEach { info ->
-                    with(info) {
-                        labels.run(mergedLabels::addAll)
-                        genres.run(mergedGenres::addAll)
-                        styles.run(mergedStyles::addAll)
-                        releaseTitles.run(mergedReleaseTitles::addAll)
-                    }
-                }
-                CompactArtistTrackInfo(
-                    labels = mergedLabels,
-                    genres = mergedGenres,
-                    styles = mergedStyles,
-                    releaseTitles = mergedReleaseTitles,
+        val discogsArtistsReleases = (discogsArtistTrackReleases.asSequence() + discogsOnlyArtistReleases.asSequence())
+            .groupBy { it.artist }
+            .entries
+            .asSequence()
+            .map { (artist, releases) ->
+                ArtistReleases(
+                    artist = artist,
+                    releases = releases.flatMap { it.releases }.distinctBy { it.title },
                 )
             }
+            .filter { it.releases.isNotEmpty() }
+            .toList()
 
         logInfo("Requesting LLM about music attachments")
 
@@ -397,12 +375,11 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             )
                         )
 
-                        if (discogsArtistInfo.isNotEmpty()) {
+                        if (discogsOnlyArtistReleases.isNotEmpty()) {
                             add(
                                 BarsikGptTextMessage(
                                     role = CommonLlmMessageRole.SYSTEM,
-                                    text = "${barsik.configuration.llm.audioPromt.discogsContext}\n" +
-                                        discogsArtistsInfo.entries.joinToString(separator = "\n") { (artist, compactInfo) -> "$artist: $compactInfo" },
+                                    text = "${barsik.configuration.llm.audioPromt.discogsContext}\n${discogsArtistsReleases.joinToString(separator = "\n")}",
                                 )
                             )
                         }

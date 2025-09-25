@@ -3,7 +3,7 @@ package com.github.drewlakee.yabarsik
 import com.github.drewlakee.yabarsik.configuration.BarsikConfiguration
 import com.github.drewlakee.yabarsik.configuration.Llm
 import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
-import com.github.drewlakee.yabarsik.discogs.api.getCompactArtistTrackInfo
+import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
@@ -94,10 +94,10 @@ class Barsik(
         domainWallpostsCount = domainWallpostsCount,
     )
 
-    fun getDiscogsArtistTrackInfo(
+    fun getArtistReleases(
         artist: String,
         track: String? = null,
-    ) = discogsApi.getCompactArtistTrackInfo(
+    ) = discogsApi.getArtistReleases(
         artist = artist,
         track = track,
     )
