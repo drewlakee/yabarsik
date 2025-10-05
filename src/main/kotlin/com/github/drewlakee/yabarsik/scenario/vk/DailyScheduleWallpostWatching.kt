@@ -155,6 +155,47 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             return DailyScheduleWatchingResult(success = true)
         }
 
+        logInfo("Checking if LLM models are available at the moment")
+        val textModelAvailability = barsik.askTextGpt(
+            temperature = 0.0f,
+            messages = listOf(
+                BarsikGptTextMessage(
+                    role = CommonLlmMessageRole.SYSTEM,
+                    text = "Are you available? Reply just OK, if you're fine."
+                )
+            )
+        )
+
+        if (textModelAvailability.failureOrNull() != null) {
+            textModelAvailability.failureOrNull()?.run(::logError)
+            return DailyScheduleWatchingResult(
+                success = false,
+                sendTelegram = true,
+                message = "Текстовая модель в данный момент недоступна, проверь что там не так!"
+            )
+        }
+        logInfo("Text model response is ${textModelAvailability.valueOrNull()}")
+
+        val multiModalModelAvailability = barsik.askMultiModalGpt(
+            temperature = 0.0f,
+            messages = listOf(
+                BarsikGptTextMessage(
+                    role = CommonLlmMessageRole.USER,
+                    text = "Are you available? Reply just OK, if you're fine."
+                )
+            )
+        )
+
+        if (multiModalModelAvailability.failureOrNull() != null) {
+            multiModalModelAvailability.failureOrNull()?.run(::logError)
+            return DailyScheduleWatchingResult(
+                success = false,
+                sendTelegram = true,
+                message = "Мульти-модальная модель в данный момент недоступна, проверь что там не так!"
+            )
+        }
+        logInfo("Multi-modal model response is ${multiModalModelAvailability.valueOrNull()}")
+
         logInfo("Collecting content providers")
         val mediaProviders =
             barsik.configuration.content.providers
@@ -582,6 +623,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         logInfo("Got result of creating a post in VK. response=${createdPost.valueOrNull() ?: "error"}")
 
         if (createdPost.failureOrNull() != null) {
+            createdPost.failureOrNull()?.run(::logError)
             return DailyScheduleWatchingResult(
                 success = false,
                 message = "Я был так близок, столько всего насобирал и отобрал, но Вконтакте не дал мне почему то это запостить... ну и ладно",

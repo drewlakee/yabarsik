@@ -20,7 +20,7 @@ inline fun <reified T> T.logError(throwable: Throwable) {
     )
 }
 
-private inline fun <reified T> T.logError(message: String, throwable: Throwable) {
+inline fun <reified T> T.logError(message: String, throwable: Throwable) {
     val errorMessages = listOfNotNull(
         message,
         throwable
