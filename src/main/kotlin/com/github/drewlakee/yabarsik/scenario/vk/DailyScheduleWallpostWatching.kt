@@ -115,7 +115,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         logInfo("Response today wallposts [${todayWallposts.valueOrNull()?.response?.items?.size ?: "error"}]: ${todayWallposts.valueOrNull() ?: "error"}")
 
         if (todayWallposts.failureOrNull() != null) {
-            logError(todayWallposts.failureOrNull()!!.cause)
+            todayWallposts.failureOrNull()?.run(::logError)
             return DailyScheduleWatchingResult(
                 success = false,
                 message = "Пытался узнать что вы сегодня ($currentDate, $currentZoneId) постили в паблике, но получаю ошибку...",
@@ -196,7 +196,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             count = barsik.configuration.content.settings.takeMusicAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.AUDIO,
                             domainWallpostsCount = domainWallpostsCount,
-                        ).peekFailure { logError(it.cause) }
+                        ).peekFailure(::logError)
                         .valueOrNull()?.let {
                             domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
                             this@DailyScheduleWatching.logInfo("Response music attachments from domain=$domain [${it.attachments.size}]: $it")
@@ -223,7 +223,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             count = barsik.configuration.content.settings.takeImagesAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.PHOTO,
                             domainWallpostsCount = domainWallpostsCount,
-                        ).peekFailure { logError(it.cause) }
+                        ).peekFailure(::logError)
                         .valueOrNull()?.let {
                             domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
                             this@DailyScheduleWatching.logInfo("Response photo attachments from domain=$domain [${it.attachments.size}]: $it")
@@ -268,7 +268,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val openSharingAttachmentsUsers =
             barsik
                 .getVkUsers(users.distinct())
-                .peekFailure { logError(it.cause) }
+                .peekFailure(::logError)
                 .map { it.users }
                 .recover { listOf() }
                 .associateBy { it.id }
@@ -280,7 +280,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val openSharingAttachmentsCommunities =
             barsik
                 .getVkGroups(communities.map { it * -1 }.distinct())
-                .peekFailure { logError(it.cause) }
+                .peekFailure(::logError)
                 .map { it.response.groups }
                 .recover { listOf() }
                 .associateBy { it.id * -1 }
@@ -323,7 +323,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 val artistTrackReleases = barsik.getArtistReleases(
                     artist = artist,
                     track = track,
-                ).peekFailure { logError(it.cause) }.valueOrNull()
+                ).peekFailure(::logError).valueOrNull()
                 logInfo("Response Discogs releases for artist=$artist, track=$track: ${artistTrackReleases ?: "error"}")
                 artistTrackReleases
             }
@@ -340,7 +340,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 logInfo("Requesting Discogs releases for artist=$artist")
                 val artistReleases = barsik.getArtistReleases(
                     artist = artist,
-                ).peekFailure { logError(it.cause) }.valueOrNull()
+                ).peekFailure(::logError).valueOrNull()
                 logInfo("Response Discogs releases for artist=$artist: ${artistReleases ?: "error"}")
                 artistReleases
             }
@@ -399,7 +399,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         logInfo("Got LLM response about music attachments. response=${llmAudioResponse.valueOrNull() ?: "error"}")
 
         if (llmAudioResponse.failureOrNull() != null) {
-            logError(llmAudioResponse.failureOrNull()!!.cause)
+            llmAudioResponse.failureOrNull()?.run(::logError)
             return DailyScheduleWatchingResult(
                 success = false,
                 message = "Мне почему-то llm не отвечает по музыке... постучусь позже",
@@ -484,7 +484,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         logInfo("Got LLM response about photo attachments. response=${llmPhotoResponse.mapNotNull { it.valueOrNull() }}")
 
         if (llmPhotoResponse.all { it.failureOrNull() != null }) {
-            llmPhotoResponse.filter { it.failureOrNull() != null }.forEach { logError(it.failureOrNull()!!.cause) }
+            llmPhotoResponse.forEach { it.failureOrNull()?.run(::logError) }
             return DailyScheduleWatchingResult(
                 success = false,
                 message = "Мне почему-то llm не отвечает по картинкам... постучусь позже",
@@ -577,7 +577,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                                 mediaId = approvedPhotoAttachment.photo!!.id,
                             ),
                         ),
-                ).peekFailure { logError(it.cause) }
+                ).peekFailure(::logError)
 
         logInfo("Got result of creating a post in VK. response=${createdPost.valueOrNull() ?: "error"}")
 

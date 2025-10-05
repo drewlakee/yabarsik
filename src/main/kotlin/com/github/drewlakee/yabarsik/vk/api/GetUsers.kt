@@ -45,7 +45,7 @@ data class GetUsers(val userIds: List<Int>): VkApiAction<VkUsers> {
                     if (it.isSuccess) {
                         Success(it.getOrNull()!!)
                     } else {
-                        logError(it.exceptionOrNull())
+                        it.exceptionOrNull()?.run(::logError)
                         Failure(RemoteRequestFailed(response.status, response.bodyString()))
                     }
                 }

@@ -53,7 +53,7 @@ data class DatabaseSearch(
                         if (it.isSuccess) {
                             Success(it.getOrNull()!!)
                         } else {
-                            logError(it.exceptionOrNull())
+                            it.exceptionOrNull()?.run(::logError)
                             Failure(RemoteRequestFailed(response.status, response.bodyString()))
                         }
                     }

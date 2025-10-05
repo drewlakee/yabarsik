@@ -45,7 +45,7 @@ data class GetGroups(val groupIds: List<Int>): VkApiAction<VkGroups> {
                     if (it.isSuccess) {
                         Success(it.getOrNull()!!)
                     } else {
-                        logError(it.exceptionOrNull())
+                        it.exceptionOrNull()?.run(::logError)
                         Failure(RemoteRequestFailed(response.status, response.bodyString()))
                     }
                 }

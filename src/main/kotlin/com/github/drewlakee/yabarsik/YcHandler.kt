@@ -41,7 +41,7 @@ class YcHandler : YcFunction<Request, Response> {
         }
 
         if (barsik.isFailure) {
-            logError(barsik.exceptionOrNull())
+            barsik.exceptionOrNull()?.run(::logError)
             return Response("ERROR: ${barsik.exceptionOrNull()?.message ?: "Unknown error"}")
         }
 

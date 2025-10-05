@@ -88,7 +88,7 @@ data class GetWallposts(
                     if (it.isSuccess) {
                         Success(it.getOrNull()!!)
                     } else {
-                        logError(it.exceptionOrNull())
+                        it.exceptionOrNull()?.run(::logError)
                         Failure(RemoteRequestFailed(response.status, response.bodyString()))
                     }
                 }
@@ -161,7 +161,7 @@ fun VkApi.takeAttachmentsRandomly(
                                 },
                             count = 100,
                         ),
-                    ).peekFailure { logError(it.cause) }
+                    ).peekFailure(::logError)
                         .map {
                             val attachments = mutableListOf<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>()
                             val buffer = it.response.items.toMutableList()
@@ -199,4 +199,4 @@ fun VkApi.takeAttachmentsRandomly(
                     attachments = it,
                 )
             }
-        }.peekFailure { logError(it.cause) }
+        }.peekFailure(::logError)

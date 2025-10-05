@@ -64,7 +64,6 @@ class Barsik(
         telegramApi.sendMessage(
             chatId = configuration.telegram.report.chatId,
             message = message,
-
         )
 
     fun getVkUsers(userIds: List<Int>) = vkApi.invoke(

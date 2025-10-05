@@ -31,7 +31,7 @@ fun TelegramApi.Companion.Http() = object : TelegramApi {
         if (it.isSuccess) {
             return Success(it.getOrThrow())
         } else {
-            logError(it.exceptionOrNull())
+            it.exceptionOrNull()?.run(::logError)
             return Failure(it.exceptionOrNull()!!)
         }
     }
