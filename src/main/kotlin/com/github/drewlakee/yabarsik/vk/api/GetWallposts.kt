@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonValue
 import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
 import com.github.drewlakee.yabarsik.logError
+import com.github.drewlakee.yabarsik.scenario.vk.AudioTitle
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -17,9 +18,6 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 import kotlin.random.Random
 
 data class VkWallposts(
@@ -115,23 +113,13 @@ fun VkApi.getTotalWallpostsCount(domain: String): Result4k<Int, RemoteRequestFai
         ),
     ).map { it.response.count }
 
-fun VkApi.getTodayWallpost(domain: String, today: LocalDate, zone: ZoneId): Result4k<VkWallposts, RemoteRequestFailed> =
+fun VkApi.getLastWallposts(domain: String): Result4k<VkWallposts, RemoteRequestFailed> =
     invoke(
         GetWallposts(
             domain = domain,
             offset = 0,
-            count = 10,
         )
-    ).map {
-        VkWallposts(
-            response = VkWallposts.VkWallpostsResponse(
-                count = it.response.count,
-                items = it.response.items.filter {
-                    LocalDate.ofInstant(Instant.ofEpochSecond(it.date), zone).isEqual(today)
-                },
-            )
-        )
-    }
+    )
 
 data class RandomVkAttachments(
     val totalWallpostsCount: Int,
@@ -143,6 +131,7 @@ fun VkApi.takeAttachmentsRandomly(
     count: Int,
     type: VkWallpostsAttachmentType,
     domainWallpostsCount: Int?,
+    excludedAudioTitles: Set<AudioTitle>? = null,
 ): Result4k<RandomVkAttachments, RemoteRequestFailed> =
     (domainWallpostsCount?.let(::Success) ?: getTotalWallpostsCount(domain))
         .map { totalWallpostsCount ->
@@ -172,9 +161,15 @@ fun VkApi.takeAttachmentsRandomly(
                                 with(value.attachments.firstOrNull { attachment -> attachment.type == type }) {
                                     when {
                                         this == null -> {}
-                                        this.type == VkWallpostsAttachmentType.AUDIO -> if (this.audio!!.url.isNotBlank()) {
-                                            attachments.add(this)
-                                        }
+                                        this.type == VkWallpostsAttachmentType.AUDIO ->
+                                            if (
+                                                this.audio!!.url.isNotBlank() &&
+                                                excludedAudioTitles?.let { titles ->
+                                                    AudioTitle.formatted(this.audio.title) !in titles
+                                                } ?: true
+                                            ) {
+                                                attachments.add(this)
+                                            }
                                         this.type == VkWallpostsAttachmentType.PHOTO -> if (this.photo!!.origPhoto != null) {
                                             attachments.add(this)
                                         }

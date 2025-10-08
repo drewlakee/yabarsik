@@ -105,35 +105,35 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             return DailyScheduleWatchingResult(success = true)
         }
 
-        logInfo("Requesting today wallposts from domain=${barsik.configuration.wallposts.domain}")
-        val todayWallposts =
-            barsik.getVkTodayWallposts(
-                domain = barsik.configuration.wallposts.domain,
-                today = currentDate,
-                zone = currentZoneId,
-            )
-        logInfo("Response today wallposts [${todayWallposts.valueOrNull()?.response?.items?.size ?: "error"}]: ${todayWallposts.valueOrNull() ?: "error"}")
+        val takeUntilDate = currentDate.minusDays(7)
+        logInfo("Requesting wallposts until=$takeUntilDate from domain=${barsik.configuration.wallposts.domain}")
+        val domainWallpostsUntilDate = barsik.getVkLastWallposts(domain = barsik.configuration.wallposts.domain)
+            .map { wallposts ->
+                wallposts.response.items
+                    .sortedByDescending { it.date }
+                    .takeWhile { wallpost -> wallpost.getLocalDate(currentZoneId).isAfter(takeUntilDate) }
+            }
+        logInfo("Response wallposts until=$takeUntilDate [${domainWallpostsUntilDate.valueOrNull()?.size ?: "error"}]: ${domainWallpostsUntilDate.valueOrNull() ?: "error"}")
 
-        if (todayWallposts.failureOrNull() != null) {
-            todayWallposts.failureOrNull()?.run(::logError)
+        if (domainWallpostsUntilDate.failureOrNull() != null) {
+            domainWallpostsUntilDate.failureOrNull()?.run(::logError)
             return DailyScheduleWatchingResult(
                 success = false,
-                message = "Пытался узнать что вы сегодня ($currentDate, $currentZoneId) постили в паблике, но получаю ошибку...",
+                message = "Пытался узнать что вы постили последнее время до $takeUntilDate ($currentZoneId), но получаю ошибку...",
                 sendTelegram = true,
             )
         }
 
-        val sortedTodayWallposts =
-            todayWallposts
-                .valueOrNull()!!
-                .response
-                .items
-                .map { wallpost -> LocalTime.ofInstant(Instant.ofEpochSecond(wallpost.date), currentZoneId) to wallpost }
-                .sortedBy { (localTime, _) -> localTime }
-
         val checkpointsBeforeNowCount = amortizationSchedule.count { checkpoint ->
             LocalTime.parse(checkpoint.at).isBefore(LocalTime.now(currentZoneId))
         }
+
+        val sortedTodayWallposts =
+            domainWallpostsUntilDate.valueOrNull()!!.asSequence()
+                .filter { wallpost -> wallpost.getLocalDate(currentZoneId) == currentDate }
+                .map { wallpost -> wallpost.getLocalTime(currentZoneId) to wallpost }
+                .sortedBy { (localTime, _) -> localTime }
+                .toList()
 
         val alreadyPostedWallpostsCount = sortedTodayWallposts.count { (localTime, _) -> localTime.isBefore(LocalTime.now(currentZoneId)) }
 
@@ -225,6 +225,11 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
 
         val domainWallpostsCountMemoization = mutableMapOf<String, Int>()
 
+        val excludedAudioTitles = domainWallpostsUntilDate.valueOrNull()!!.asSequence()
+            .flatMap { wallpost -> wallpost.attachments }
+            .filter { attachment -> attachment.type == VkWallpostsAttachmentType.AUDIO }
+            .map { attachment -> AudioTitle.formatted(attachment.audio!!.title) }
+            .toSet()
         var musicAttachments =
             buildList {
                 for (limit in 1..5) {
@@ -237,6 +242,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             count = barsik.configuration.content.settings.takeMusicAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.AUDIO,
                             domainWallpostsCount = domainWallpostsCount,
+                            excludedAudioTitles = excludedAudioTitles,
                         ).peekFailure(::logError)
                         .valueOrNull()?.let {
                             domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
@@ -674,6 +680,10 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             }
         }
 }
+
+private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.getLocalDate(zoneId: ZoneId) = LocalDate.ofInstant(Instant.ofEpochSecond(this.date), zoneId)
+
+private fun VkWallposts.VkWallpostsResponse.VkWallpostsItem.getLocalTime(zoneId: ZoneId) = LocalTime.ofInstant(Instant.ofEpochSecond(this.date), zoneId)
 
 private fun List<Content.Provider>.getRandomProvider() = this[Random.nextInt(size)]
 

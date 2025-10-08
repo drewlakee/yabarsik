@@ -6,6 +6,7 @@ import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
 import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
+import com.github.drewlakee.yabarsik.scenario.vk.AudioTitle
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.vk.api.GetGroups
 import com.github.drewlakee.yabarsik.vk.api.GetUsers
@@ -13,7 +14,7 @@ import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostsAttachmentType
-import com.github.drewlakee.yabarsik.vk.api.getTodayWallpost
+import com.github.drewlakee.yabarsik.vk.api.getLastWallposts
 import com.github.drewlakee.yabarsik.vk.api.takeAttachmentsRandomly
 import com.github.drewlakee.yabarsik.yandex.llm.api.AskOpenAiModels
 import com.github.drewlakee.yabarsik.yandex.llm.api.AskOpenAiModelsImageUrlContent
@@ -30,8 +31,6 @@ import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.peekFailure
 import org.http4k.cloudnative.RemoteRequestFailed
 import yandex.cloud.sdk.functions.Context
-import java.time.LocalDate
-import java.time.ZoneId
 
 class Barsik(
     private val context: Context,
@@ -78,19 +77,21 @@ class Barsik(
         )
     )
 
-    fun getVkTodayWallposts(domain: String, today: LocalDate, zone: ZoneId) =
-        vkApi.getTodayWallpost(domain, today, zone)
+    fun getVkLastWallposts(domain: String) =
+        vkApi.getLastWallposts(domain)
 
     fun takeVkAttachmentsRandomly(
         domain: String,
         count: Int,
         type: VkWallpostsAttachmentType,
         domainWallpostsCount: Int? = null,
+        excludedAudioTitles: Set<AudioTitle>? = null,
     ) = vkApi.takeAttachmentsRandomly(
         domain = domain,
         count = count,
         type = type,
         domainWallpostsCount = domainWallpostsCount,
+        excludedAudioTitles = excludedAudioTitles,
     )
 
     fun getArtistReleases(
