@@ -228,8 +228,15 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
         val excludedAudioTitles = domainWallpostsUntilDate.valueOrNull()!!.asSequence()
             .flatMap { wallpost -> wallpost.attachments }
             .filter { attachment -> attachment.type == VkWallpostsAttachmentType.AUDIO }
-            .map { attachment -> AudioTitle.formatted(attachment.audio!!.title) }
-            .toSet()
+            .map { attachment ->
+                with(attachment.audio!!) {
+                    artist to AudioTitle.formatted(title)
+                }
+            }
+            .toList()
+
+        logInfo("Excluded tracks for the previous week: $excludedAudioTitles")
+
         var musicAttachments =
             buildList {
                 for (limit in 1..5) {
@@ -242,7 +249,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             count = barsik.configuration.content.settings.takeMusicAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.AUDIO,
                             domainWallpostsCount = domainWallpostsCount,
-                            excludedAudioTitles = excludedAudioTitles,
+                            excludedAudioTitles = excludedAudioTitles.map { (_, title) -> title }.toSet(),
                         ).peekFailure(::logError)
                         .valueOrNull()?.let {
                             domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
