@@ -83,13 +83,11 @@ wallposts:
 # Настройки облака в Yandex.Cloud
 cloud:
   function:
-    # Папка проекта
+    # Каталога проекта
     folderId: b1gioucfterb2rnsqb1q
 
 # Настройки для LLM
 llm:
-  # Папка проекта
-  folderId: b1gioucfterb2rnsqb1q
   # Настройки для модели текст-текст
   textGtp:
     model: gpt-oss-120b
@@ -174,6 +172,8 @@ content:
     takeImagesAttachmentsPerProvider: 2
     # Веса для отбора конечной выборки в музыке
     musicLlmApprovalThreshold: 0.6
+    # Уникальность контента относительно паблика на протяжении времени (дни)
+    attachmentsUniquenessDepthInDays: 30
   # Источники для контента
   providers:
     - provider: VK
