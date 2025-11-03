@@ -120,7 +120,7 @@ class Barsik(
                 yandexLlmModelsApi
                     .invoke(
                         AskYandexFoundationModels(
-                            folderId = configuration.llm.folderId,
+                            folderId = configuration.cloud.function.folderId,
                             temperature = temperature,
                             modelVersion = configuration.llm.textGtp.model,
                             messages =
@@ -149,7 +149,7 @@ class Barsik(
                 yandexLlmModelsApi
                     .invoke(
                         AskOpenAiModels(
-                            folderId = configuration.llm.folderId,
+                            folderId = configuration.cloud.function.folderId,
                             modelVersion = configuration.llm.textGtp.model,
                             temperature = temperature,
                             messages =
@@ -195,7 +195,7 @@ class Barsik(
                 yandexLlmModelsApi
                     .invoke(
                         AskYandexFoundationModels(
-                            folderId = configuration.llm.folderId,
+                            folderId = configuration.cloud.function.folderId,
                             modelVersion = configuration.llm.multiModalGpt.model,
                             temperature = temperature,
                             messages =
@@ -224,7 +224,7 @@ class Barsik(
                 yandexLlmModelsApi
                     .invoke(
                         AskOpenAiModels(
-                            folderId = configuration.llm.folderId,
+                            folderId = configuration.cloud.function.folderId,
                             modelVersion = configuration.llm.multiModalGpt.model,
                             temperature = temperature,
                             messages =

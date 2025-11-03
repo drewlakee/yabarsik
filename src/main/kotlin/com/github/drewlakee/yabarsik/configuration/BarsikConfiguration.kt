@@ -13,7 +13,7 @@ data class BarsikConfiguration(
     val llm = configuration.llm
     val cloud = configuration.cloud
 
-    fun toYamlString(): String = runCatching {
+    override fun toString(): String = runCatching {
         yamlMapper.writeValueAsString(configuration)
             .replace("---", "")
     }
@@ -32,7 +32,6 @@ data class Configuration(
 )
 
 data class Llm(
-    val folderId: String,
     val textGtp: TextGtp,
     val multiModalGpt: MultiModalGpt,
     val audioPromt: AudioPromt,
@@ -73,6 +72,7 @@ data class Content(val settings: Settings, val providers: List<Provider>) {
         val imagesAttachmentsCollectorSize: Int,
         val takeImagesAttachmentsPerProvider: Int,
         val musicLlmApprovalThreshold: Float,
+        val attachmentsUniquenessDepthInDays: Long,
     )
 
     data class Provider(

@@ -105,7 +105,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             return DailyScheduleWatchingResult(success = true)
         }
 
-        val takeUntilDate = currentDate.minusDays(7)
+        val takeUntilDate = currentDate.minusDays(barsik.configuration.content.settings.attachmentsUniquenessDepthInDays)
         logInfo("Requesting wallposts until=$takeUntilDate from domain=${barsik.configuration.wallposts.domain}")
         val domainWallpostsUntilDate = barsik.getVkLastWallposts(domain = barsik.configuration.wallposts.domain)
             .map { wallposts ->
