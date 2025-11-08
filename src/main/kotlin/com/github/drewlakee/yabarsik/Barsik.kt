@@ -7,6 +7,7 @@ import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.scenario.vk.AudioTitle
+import com.github.drewlakee.yabarsik.scenario.vk.VkWallpostAttachment
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.vk.api.GetGroups
 import com.github.drewlakee.yabarsik.vk.api.GetUsers
@@ -86,12 +87,14 @@ class Barsik(
         type: VkWallpostsAttachmentType,
         domainWallpostsCount: Int? = null,
         excludedAudioTitles: Set<AudioTitle>? = null,
+        excludeWallpostAttachments: Set<VkWallpostAttachment>? = null,
     ) = vkApi.takeAttachmentsRandomly(
         domain = domain,
         count = count,
         type = type,
         domainWallpostsCount = domainWallpostsCount,
         excludedAudioTitles = excludedAudioTitles,
+        excludeWallpostAttachments = excludeWallpostAttachments,
     )
 
     fun getArtistReleases(

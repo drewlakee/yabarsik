@@ -235,7 +235,14 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
             }
             .toList()
 
-        logInfo("Excluded tracks for the previous week: $excludedAudioTitles")
+        val excludedPhotoAttachments = domainWallpostsUntilDate.valueOrNull()!!.asSequence()
+            .flatMap { wallpost -> wallpost.attachments }
+            .filter { attachment -> attachment.type == VkWallpostsAttachmentType.PHOTO }
+            .map(VkWallpostAttachment::formAttachmentId)
+            .toSet()
+
+        logInfo("Excluded tracks: $excludedAudioTitles")
+        logInfo("Excluded photos: $excludedPhotoAttachments")
 
         var musicAttachments =
             buildList {
@@ -277,6 +284,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             count = barsik.configuration.content.settings.takeImagesAttachmentsPerProvider,
                             type = VkWallpostsAttachmentType.PHOTO,
                             domainWallpostsCount = domainWallpostsCount,
+                            excludeWallpostAttachments = excludedPhotoAttachments,
                         ).peekFailure(::logError)
                         .valueOrNull()?.let {
                             domainWallpostsCountMemoization[domain] = it.totalWallpostsCount
@@ -623,12 +631,12 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                             VkPostWallpostAttachment(
                                 type = approvedMusicAttachment.type,
                                 ownerId = approvedMusicAttachment.audio!!.ownerId,
-                                mediaId = approvedMusicAttachment.audio!!.id,
+                                mediaId = approvedMusicAttachment.audio.id,
                             ),
                             VkPostWallpostAttachment(
                                 type = approvedPhotoAttachment.type,
                                 ownerId = approvedPhotoAttachment.photo!!.ownerId,
-                                mediaId = approvedPhotoAttachment.photo!!.id,
+                                mediaId = approvedPhotoAttachment.photo.id,
                             ),
                         ),
                 ).peekFailure(::logError)
@@ -651,7 +659,7 @@ class DailyScheduleWatching : BarsikScenario<DailyScheduleWatchingResult> {
                 """
                 Ура! Я неплохо потрудился и вот, что у меня вышло, пойду отдыхать...
                 
-                [картиночка](${approvedPhotoAttachment.photo.origPhoto!!.url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio!!.url})
+                [картиночка](${approvedPhotoAttachment.photo.origPhoto!!.url}) и [${approvedMusicAttachment.audio.artist} - ${approvedMusicAttachment.audio.title}](${approvedMusicAttachment.audio.url})
                 
                 Положил на [страничку](https://vk.com/${barsik.configuration.wallposts.domain}?w=wall${barsik.configuration.wallposts.communityId}_${createdPost.orThrow().response.postId})!
                 """.trimIndent(),

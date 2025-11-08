@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonValue
 import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
 import com.github.drewlakee.yabarsik.logError
 import com.github.drewlakee.yabarsik.scenario.vk.AudioTitle
+import com.github.drewlakee.yabarsik.scenario.vk.VkWallpostAttachment
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -81,15 +82,16 @@ data class GetWallposts(
 
     override fun toResult(response: Response): Result4k<VkWallposts, RemoteRequestFailed> =
         when (response.status) {
-            Status.OK -> runCatching { VkApiAction.jsonTo<VkWallposts>(response.body) }
-                .let {
-                    if (it.isSuccess) {
-                        Success(it.getOrNull()!!)
-                    } else {
-                        it.exceptionOrNull()?.run(::logError)
-                        Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            Status.OK ->
+                runCatching { VkApiAction.jsonTo<VkWallposts>(response.body) }
+                    .let {
+                        if (it.isSuccess) {
+                            Success(it.getOrNull()!!)
+                        } else {
+                            it.exceptionOrNull()?.run(::logError)
+                            Failure(RemoteRequestFailed(response.status, response.bodyString()))
+                        }
                     }
-                }
             else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
         }
 }
@@ -101,7 +103,9 @@ enum class VkWallpostsAttachmentType(
     AUDIO("audio"),
 
     @JsonEnumDefaultValue
-    UNKNOWN("unknown"),
+    UNKNOWN("unknown");
+
+    override fun toString(): String = type
 }
 
 fun VkApi.getTotalWallpostsCount(domain: String): Result4k<Int, RemoteRequestFailed> =
@@ -118,7 +122,7 @@ fun VkApi.getLastWallposts(domain: String): Result4k<VkWallposts, RemoteRequestF
         GetWallposts(
             domain = domain,
             offset = 0,
-        )
+        ),
     )
 
 data class RandomVkAttachments(
@@ -132,6 +136,7 @@ fun VkApi.takeAttachmentsRandomly(
     type: VkWallpostsAttachmentType,
     domainWallpostsCount: Int?,
     excludedAudioTitles: Set<AudioTitle>? = null,
+    excludeWallpostAttachments: Set<VkWallpostAttachment>? = null,
 ): Result4k<RandomVkAttachments, RemoteRequestFailed> =
     (domainWallpostsCount?.let(::Success) ?: getTotalWallpostsCount(domain))
         .map { totalWallpostsCount ->
@@ -158,7 +163,17 @@ fun VkApi.takeAttachmentsRandomly(
                                 val j = Random.nextInt(buffer.size)
                                 val last = buffer.removeLast()
                                 val value = if (j < buffer.size) buffer.set(j, last) else last
-                                with(value.attachments.firstOrNull { attachment -> attachment.type == type }) {
+                                val anyFirstAttachmentOrNull =
+                                    value.attachments
+                                        .asSequence()
+                                        .filter { attachment ->
+                                            excludeWallpostAttachments?.let {
+                                                VkWallpostAttachment.formAttachmentId(attachment) !in excludeWallpostAttachments
+                                            } ?: true
+                                        }
+                                        .filter { attachment -> attachment.type == type }
+                                        .firstOrNull()
+                                with(anyFirstAttachmentOrNull) {
                                     when {
                                         this == null -> {}
                                         this.type == VkWallpostsAttachmentType.AUDIO ->
@@ -170,9 +185,10 @@ fun VkApi.takeAttachmentsRandomly(
                                             ) {
                                                 attachments.add(this)
                                             }
-                                        this.type == VkWallpostsAttachmentType.PHOTO -> if (this.photo!!.origPhoto != null) {
-                                            attachments.add(this)
-                                        }
+                                        this.type == VkWallpostsAttachmentType.PHOTO ->
+                                            if (this.photo!!.origPhoto != null) {
+                                                attachments.add(this)
+                                            }
                                         else -> attachments.add(this)
                                     }
                                 }
