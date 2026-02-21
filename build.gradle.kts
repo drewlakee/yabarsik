@@ -16,6 +16,8 @@ dependencies {
     implementation("org.http4k:http4k-connect-core:6.17.0.0")
     implementation("org.http4k:http4k-client-okhttp:6.17.0.0")
 
+    implementation("com.embabel.agent:embabel-agent-starter:0.3.4")
+
     testImplementation(kotlin("test"))
 }
 
@@ -50,9 +52,17 @@ tasks.register<Exec>("ycDeployFunctionProduction") {
     dependsOn("ycFunctionZip")
 
     workingDir = File("build/yc")
-    executable = providers.exec { commandLine( "which", "yc") }.standardOutput.asText.get().trimIndent()
+    executable =
+        providers
+            .exec { commandLine("which", "yc") }
+            .standardOutput.asText
+            .get()
+            .trimIndent()
     args(
-        "serverless", "function", "version", "create",
+        "serverless",
+        "function",
+        "version",
+        "create",
         "--function-name=yabarsik",
         "--runtime=kotlin20",
         "--entrypoint=com.github.drewlakee.yabarsik.YcHandler",
@@ -76,9 +86,17 @@ tasks.register<Exec>("ycDeployFunctionTesting") {
     dependsOn("ycFunctionZip")
 
     workingDir = File("build/yc")
-    executable = providers.exec { commandLine( "which", "yc") }.standardOutput.asText.get().trimIndent()
+    executable =
+        providers
+            .exec { commandLine("which", "yc") }
+            .standardOutput.asText
+            .get()
+            .trimIndent()
     args(
-        "serverless", "function", "version", "create",
+        "serverless",
+        "function",
+        "version",
+        "create",
         "--function-name=yabarsik",
         "--runtime=kotlin20",
         "--entrypoint=com.github.drewlakee.yabarsik.YcHandler",
