@@ -45,3 +45,5 @@ bin/
 
 *.env
 Main.kt
+application-production.yaml
+application-testing.yaml
