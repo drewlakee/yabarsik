@@ -8,9 +8,13 @@ import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.telegram.api.http
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.http
+import com.github.drewlakee.yabarsik.vk.community.VkCommunity
+import com.github.drewlakee.yabarsik.vk.content.ContentProvidersConfigurationProperties
+import com.github.drewlakee.yabarsik.vk.content.VkContentProvider
 import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
 import com.github.drewlakee.yabarsik.yandex.s3.api.http
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
@@ -51,5 +55,24 @@ open class YabarsikContextConfiguration {
         YandexS3Api.http(
             configurationS3ObjectId = configurationObjectId,
             configurationS3Bucket = configurationBucket,
+        )
+
+    @Bean
+    open fun vkCommunity(
+        @Value("\${yabarsik.vk.community.id}") communityId: Int,
+        @Value("\${yabarsik.vk.community.domain}") communityDomain: String,
+    ) = VkCommunity(
+        id = communityId,
+        domain = communityDomain,
+    )
+
+    @Bean
+    @ConfigurationProperties(prefix = "yabarsik.content")
+    open fun contentProvidersConfigurationProperties(): ContentProvidersConfigurationProperties = ContentProvidersConfigurationProperties()
+
+    @Bean
+    open fun vkContentProvider(configurationProperties: ContentProvidersConfigurationProperties) =
+        VkContentProvider(
+            configurationProperties = configurationProperties,
         )
 }

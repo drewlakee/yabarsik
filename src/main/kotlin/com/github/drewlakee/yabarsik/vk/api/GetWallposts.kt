@@ -18,6 +18,7 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import java.time.Instant
 import kotlin.random.Random
 
 data class VkWallposts(
@@ -32,7 +33,24 @@ data class VkWallposts(
             val date: Long,
             @field:JsonProperty("postponed_id") val postponedId: Int?,
             val attachments: List<VkWallpostsAttachment>,
+            val likes: Likes,
+            val reposts: Reposts,
+            val comments: Comments,
         ) {
+            val dateString = Instant.ofEpochSecond(date).toString()
+
+            data class Comments(
+                val count: Int,
+            )
+
+            data class Likes(
+                val count: Int,
+            )
+
+            data class Reposts(
+                val count: Int,
+            )
+
             data class VkWallpostsAttachment(
                 val type: VkWallpostsAttachmentType,
                 val photo: VkWallpostsAttachmentPhoto?,
@@ -122,11 +140,15 @@ fun VkApi.getTotalWallpostsCount(domain: String): Result4k<Int, RemoteRequestFai
         ),
     ).map { it.response.count }
 
-fun VkApi.getLastWallposts(domain: String): Result4k<VkWallposts, RemoteRequestFailed> =
+fun VkApi.getLastWallposts(
+    domain: String,
+    count: Int = 100,
+): Result4k<VkWallposts, RemoteRequestFailed> =
     invoke(
         GetWallposts(
             domain = domain,
             offset = 0,
+            count = count.coerceAtMost(100),
         ),
     )
 
@@ -139,7 +161,7 @@ fun VkApi.takeAttachmentsRandomly(
     domain: String,
     count: Int,
     type: VkWallpostsAttachmentType,
-    domainWallpostsCount: Int?,
+    domainWallpostsCount: Int? = null,
     excludedAudioTitles: Set<AudioTitle>? = null,
     excludeWallpostAttachments: Set<VkWallpostAttachment>? = null,
 ): Result4k<RandomVkAttachments, RemoteRequestFailed> =
@@ -208,9 +230,8 @@ fun VkApi.takeAttachmentsRandomly(
                             attachments
                         }.recover { listOf() }
                         .forEach { attachment ->
-                            if (this.size < count) {
-                                add(attachment)
-                            } else {
+                            add(attachment)
+                            if (size == count) {
                                 return@buildList
                             }
                         }

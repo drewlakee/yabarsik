@@ -5,7 +5,8 @@ import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.vk.api.VkApi
-import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
+import com.github.drewlakee.yabarsik.vk.community.VkCommunity
+import com.github.drewlakee.yabarsik.vk.content.VkContentProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -17,12 +18,14 @@ open class EmbabelAgentsContextConfiguration {
         vkApi: VkApi,
         imagesApi: ImagesApi,
         discogsApi: DiscogsApi,
-        yandexS3Api: YandexS3Api,
+        vkCommunity: VkCommunity,
+        vkContentProvider: VkContentProvider,
     ) = VkCommunityContentManagerAgent(
         telegramApi = telegramApi,
         vkApi = vkApi,
         imagesApi = imagesApi,
         discogsApi = discogsApi,
-        yandexS3Api = yandexS3Api,
+        vkCommunity = vkCommunity,
+        vkContentProvider = vkContentProvider,
     )
 }
