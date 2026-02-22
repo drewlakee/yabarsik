@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.drewlakee.yabarsik.configuration.BarsikConfiguration
-import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.CONFIGURATION_S3_BUCKET
-import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.CONFIGURATION_S3_OBJECT_ID
 import com.github.drewlakee.yabarsik.configuration.Configuration
 import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
@@ -25,38 +23,47 @@ interface YandexS3Api {
     companion object
 }
 
-fun YandexS3Api.Companion.Http() = object : YandexS3Api {
-    private val s3Client = S3Client.builder()
-        .region(Region.US_EAST_1)
-        .endpointOverride(URI.create("https://storage.yandexcloud.net"))
-        .httpClientBuilder(ApacheHttpClient.builder())
-        .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
-        .build()
-    private val yamlMapper = ObjectMapper(YAMLFactory()).registerKotlinModule()
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-
+fun YandexS3Api.Companion.http(
+    configurationS3ObjectId: String,
+    configurationS3Bucket: String,
+) = object : YandexS3Api {
+    private val s3Client =
+        S3Client
+            .builder()
+            .region(Region.US_EAST_1)
+            .endpointOverride(URI.create("https://storage.yandexcloud.net"))
+            .httpClientBuilder(ApacheHttpClient.builder())
+            .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+            .build()
+    private val yamlMapper =
+        ObjectMapper(YAMLFactory())
+            .registerKotlinModule()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
     override fun getBarsikConfiguration(): Result4k<BarsikConfiguration, Throwable> =
         runCatching {
-            s3Client.getObject (
-                GetObjectRequest.builder()
-                    .key(CONFIGURATION_S3_OBJECT_ID)
-                    .bucket(CONFIGURATION_S3_BUCKET)
-                    .build()
-            ).let {
-                yamlMapper
-                    .readValue(it.readAllBytes(), Configuration::class.java)
-            }
+            s3Client
+                .getObject(
+                    GetObjectRequest
+                        .builder()
+                        .key(configurationS3ObjectId)
+                        .bucket(configurationS3Bucket)
+                        .build(),
+                ).let {
+                    yamlMapper
+                        .readValue(it.readAllBytes(), Configuration::class.java)
+                }
         }.let {
             if (it.isSuccess) {
-                return Success(BarsikConfiguration(
-                    yamlMapper = yamlMapper,
-                    configuration = it.getOrThrow(),
-                ))
+                return Success(
+                    BarsikConfiguration(
+                        yamlMapper = yamlMapper,
+                        configuration = it.getOrThrow(),
+                    ),
+                )
             } else {
                 it.exceptionOrNull()?.run(::logError)
                 return Failure(it.exceptionOrNull()!!)
             }
         }
 }
-

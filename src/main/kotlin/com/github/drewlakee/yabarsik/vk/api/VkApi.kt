@@ -16,15 +16,17 @@ import org.http4k.filter.ClientFilters.SetBaseUriFrom
 import org.http4k.filter.RequestFilters.SetHeader
 
 interface VkApiAction<R> : Action<Result4k<R, RemoteRequestFailed>> {
-
     companion object {
-        protected val JSON = ObjectMapper()
-            .registerKotlinModule()
-            .configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE, true)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        protected val JSON =
+            ObjectMapper()
+                .registerKotlinModule()
+                .configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE, true)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
         protected inline fun <reified R> jsonTo(body: Body): R = JSON.readValue(body.stream)
     }
+
+    fun apiAccessToken(): VkAccessToken
 }
 
 interface VkApi {
@@ -33,11 +35,23 @@ interface VkApi {
     companion object
 }
 
-fun VkApi.Companion.Http() = object : VkApi {
-    private val http = SetBaseUriFrom(Uri.of("https://api.vk.ru"))
-        .then(SetHeader("Accept", "application/json"))
-        .then(OkHttp())
+fun VkApi.Companion.http(
+    serviceAccessToken: String,
+    communityAccessToken: String,
+): VkApi =
+    object : VkApi {
+        private val http =
+            SetBaseUriFrom(Uri.of("https://api.vk.ru"))
+                .then(SetHeader("Accept", "application/json"))
+                .then(OkHttp())
 
-    override fun <R : Any> invoke(action: VkApiAction<R>): Result4k<R, RemoteRequestFailed> =
-        action.toResult(http(action.toRequest()))
-}
+        override fun <R : Any> invoke(action: VkApiAction<R>): Result4k<R, RemoteRequestFailed> =
+            action.toResult(
+                with(action.toRequest()) {
+                    when (action.apiAccessToken()) {
+                        VkAccessToken.SERVICE -> body(bodyString() + "&access_token=$serviceAccessToken")
+                        VkAccessToken.COMMUNITY -> body(bodyString() + "&access_token=$communityAccessToken")
+                    }
+                }.run(http::invoke),
+            )
+    }

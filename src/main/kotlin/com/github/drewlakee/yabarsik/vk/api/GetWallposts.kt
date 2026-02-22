@@ -4,7 +4,6 @@ package com.github.drewlakee.yabarsik.vk.api
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonValue
-import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
 import com.github.drewlakee.yabarsik.logError
 import com.github.drewlakee.yabarsik.scenario.vk.AudioTitle
 import com.github.drewlakee.yabarsik.scenario.vk.VkWallpostAttachment
@@ -72,7 +71,6 @@ data class GetWallposts(
         Request(Method.POST, "/method/wall.get")
             .body(
                 listOf(
-                    "access_token=$VK_SERVICE_ACCESS_TOKEN",
                     "domain=$domain",
                     "offset=${Math.max(0, offset)}",
                     "count=${Math.max(0, count.coerceAtMost(100))}",
@@ -82,7 +80,7 @@ data class GetWallposts(
 
     override fun toResult(response: Response): Result4k<VkWallposts, RemoteRequestFailed> =
         when (response.status) {
-            Status.OK ->
+            Status.OK -> {
                 runCatching { VkApiAction.jsonTo<VkWallposts>(response.body) }
                     .let {
                         if (it.isSuccess) {
@@ -92,8 +90,14 @@ data class GetWallposts(
                             Failure(RemoteRequestFailed(response.status, response.bodyString()))
                         }
                     }
-            else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            }
+
+            else -> {
+                Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            }
         }
+
+    override fun apiAccessToken(): VkAccessToken = VkAccessToken.SERVICE
 }
 
 enum class VkWallpostsAttachmentType(
@@ -103,7 +107,8 @@ enum class VkWallpostsAttachmentType(
     AUDIO("audio"),
 
     @JsonEnumDefaultValue
-    UNKNOWN("unknown");
+    UNKNOWN("unknown"),
+    ;
 
     override fun toString(): String = type
 }
@@ -170,13 +175,13 @@ fun VkApi.takeAttachmentsRandomly(
                                             excludeWallpostAttachments?.let {
                                                 VkWallpostAttachment.formAttachmentId(attachment) !in excludeWallpostAttachments
                                             } ?: true
-                                        }
-                                        .filter { attachment -> attachment.type == type }
+                                        }.filter { attachment -> attachment.type == type }
                                         .firstOrNull()
                                 with(anyFirstAttachmentOrNull) {
                                     when {
                                         this == null -> {}
-                                        this.type == VkWallpostsAttachmentType.AUDIO ->
+
+                                        this.type == VkWallpostsAttachmentType.AUDIO -> {
                                             if (
                                                 this.audio!!.url.isNotBlank() &&
                                                 excludedAudioTitles?.let { titles ->
@@ -185,11 +190,17 @@ fun VkApi.takeAttachmentsRandomly(
                                             ) {
                                                 attachments.add(this)
                                             }
-                                        this.type == VkWallpostsAttachmentType.PHOTO ->
+                                        }
+
+                                        this.type == VkWallpostsAttachmentType.PHOTO -> {
                                             if (this.photo!!.origPhoto != null) {
                                                 attachments.add(this)
                                             }
-                                        else -> attachments.add(this)
+                                        }
+
+                                        else -> {
+                                            attachments.add(this)
+                                        }
                                     }
                                 }
                             }
