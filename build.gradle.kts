@@ -17,6 +17,7 @@ dependencies {
     implementation("org.http4k:http4k-client-okhttp:6.17.0.0")
 
     implementation("com.embabel.agent:embabel-agent-starter:0.3.4")
+    implementation("com.embabel.agent:embabel-agent-openai:0.3.4")
 
     testImplementation(kotlin("test"))
 }
