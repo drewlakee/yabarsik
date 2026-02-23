@@ -1,6 +1,5 @@
 package com.github.drewlakee.yabarsik.telegram.api
 
-import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -39,7 +38,7 @@ fun TelegramApi.Companion.http(token: String) =
                 if (it.isSuccess) {
                     return Success(it.getOrThrow())
                 } else {
-                    it.exceptionOrNull()?.run(::logError)
+                    it.exceptionOrNull()?.run(::println)
                     return Failure(it.exceptionOrNull()!!)
                 }
             }

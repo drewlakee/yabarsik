@@ -1,4 +1,4 @@
-package com.github.drewlakee.yabarsik.scenario.vk
+package com.github.drewlakee.yabarsik.vk.content
 
 @JvmInline
 value class AudioTitle private constructor(val title: String) {

@@ -50,12 +50,12 @@ open class YabarsikContextConfiguration {
 
     @Bean
     open fun yandexS3StorageApi(
-        @Value("\${yabarsik.s3.configuration-object-id}") configurationObjectId: String,
-        @Value("\${yabarsik.s3.configuration-bucket}") configurationBucket: String,
+        @Value("\${yabarsik.s3.access-key-id}") accessKeyId: String,
+        @Value("\${yabarsik.s3.secret-access-key}") secretAccessKey: String,
     ): YandexS3Api =
         YandexS3Api.http(
-            configurationS3ObjectId = configurationObjectId,
-            configurationS3Bucket = configurationBucket,
+            accessKeyId = accessKeyId,
+            secretAccessKey = secretAccessKey,
         )
 
     @Bean

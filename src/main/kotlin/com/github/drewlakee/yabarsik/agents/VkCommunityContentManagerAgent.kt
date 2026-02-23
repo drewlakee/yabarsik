@@ -14,7 +14,6 @@ import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.prompt.YabarsikPromptContributors
-import com.github.drewlakee.yabarsik.scenario.vk.VkWallpostAttachment
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChat
 import com.github.drewlakee.yabarsik.vk.api.GetComments
@@ -30,6 +29,7 @@ import com.github.drewlakee.yabarsik.vk.api.takeAttachmentsRandomly
 import com.github.drewlakee.yabarsik.vk.community.VkCommunity
 import com.github.drewlakee.yabarsik.vk.content.ContentMedia
 import com.github.drewlakee.yabarsik.vk.content.VkContentProvider
+import com.github.drewlakee.yabarsik.vk.content.VkWallpostAttachment
 import dev.forkhandles.result4k.map
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.recover

@@ -8,12 +8,10 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
-import java.util.Base64
 
 data class DownloadedImage(
     val url: String,
     val mimeType: String,
-    val base64String: String,
     val bytes: ByteArray,
 )
 
@@ -31,11 +29,6 @@ class GetImage(
                         url = url,
                         mimeType = "image/$imageType",
                         bytes = response.body.payload.array(),
-                        base64String =
-                            with(response.body) {
-                                val encodedImage = Base64.getEncoder().encodeToString(response.body.payload.array())
-                                "data:image/$imageType;base64,$encodedImage"
-                            },
                     ),
                 )
             }

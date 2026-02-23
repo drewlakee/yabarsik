@@ -4,9 +4,8 @@ package com.github.drewlakee.yabarsik.vk.api
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonValue
-import com.github.drewlakee.yabarsik.logError
-import com.github.drewlakee.yabarsik.scenario.vk.AudioTitle
-import com.github.drewlakee.yabarsik.scenario.vk.VkWallpostAttachment
+import com.github.drewlakee.yabarsik.vk.content.AudioTitle
+import com.github.drewlakee.yabarsik.vk.content.VkWallpostAttachment
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -104,7 +103,7 @@ data class GetWallposts(
                         if (it.isSuccess) {
                             Success(it.getOrNull()!!)
                         } else {
-                            it.exceptionOrNull()?.run(::logError)
+                            it.exceptionOrNull()?.run(::println)
                             Failure(RemoteRequestFailed(response.status, response.bodyString()))
                         }
                     }
@@ -182,7 +181,7 @@ fun VkApi.takeAttachmentsRandomly(
                                 },
                             count = 100,
                         ),
-                    ).peekFailure(::logError)
+                    ).peekFailure(::println)
                         .map {
                             val attachments = mutableListOf<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>()
                             val buffer = it.response.items.toMutableList()
@@ -242,4 +241,4 @@ fun VkApi.takeAttachmentsRandomly(
                     attachments = it,
                 )
             }
-        }.peekFailure(::logError)
+        }.peekFailure(::println)
