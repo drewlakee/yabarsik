@@ -6,7 +6,9 @@ import dev.forkhandles.result4k.Success
 import org.http4k.cloudnative.RemoteRequestFailed
 import org.http4k.core.Status
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.http.apache.ApacheHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
@@ -18,14 +20,14 @@ interface YandexS3Api {
     fun getObject(
         bucket: String,
         objectId: String,
-    ): Result4k<GetObjectResponse, RemoteRequestFailed>
+    ): Result4k<ResponseInputStream<GetObjectResponse>, RemoteRequestFailed>
 
     companion object
 }
 
 fun YandexS3Api.Companion.http(
-    accessKeyId: String,
-    secretAccessKey: String,
+    accessKeyId: String? = null,
+    secretAccessKey: String? = null,
 ) = object : YandexS3Api {
     private val s3Client =
         S3Client
@@ -33,13 +35,18 @@ fun YandexS3Api.Companion.http(
             .region(Region.US_EAST_1)
             .endpointOverride(URI.create("https://storage.yandexcloud.net"))
             .httpClientBuilder(ApacheHttpClient.builder())
-            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
-            .build()
+            .credentialsProvider(
+                if (accessKeyId == null || secretAccessKey == null) {
+                    EnvironmentVariableCredentialsProvider.create()
+                } else {
+                    StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey))
+                },
+            ).build()
 
     override fun getObject(
         bucket: String,
         objectId: String,
-    ): Result4k<GetObjectResponse, RemoteRequestFailed> =
+    ): Result4k<ResponseInputStream<GetObjectResponse>, RemoteRequestFailed> =
         runCatching {
             s3Client.getObject(
                 GetObjectRequest
@@ -50,7 +57,7 @@ fun YandexS3Api.Companion.http(
             )
         }.let {
             if (it.isSuccess) {
-                return Success(it.getOrThrow().response())
+                return Success(it.getOrThrow())
             } else {
                 it.exceptionOrNull()?.run(::println)
                 return Failure(
