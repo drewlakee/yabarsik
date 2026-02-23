@@ -3,6 +3,7 @@ package com.github.drewlakee.yabarsik.agents
 import com.embabel.agent.api.annotation.AchievesGoal
 import com.embabel.agent.api.annotation.Action
 import com.embabel.agent.api.annotation.Agent
+import com.embabel.agent.api.common.AgentImage
 import com.embabel.agent.api.common.OperationContext
 import com.embabel.agent.api.common.SomeOf
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
@@ -10,11 +11,16 @@ import com.github.drewlakee.yabarsik.configuration.YabarsikLlmModels
 import com.github.drewlakee.yabarsik.discogs.api.ArtistReleases
 import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
 import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
+import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.prompt.YabarsikPromptContributors
+import com.github.drewlakee.yabarsik.scenario.vk.VkWallpostAttachment
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
+import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChat
 import com.github.drewlakee.yabarsik.vk.api.GetComments
+import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
+import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostComments.Response.VkWallpostComment
 import com.github.drewlakee.yabarsik.vk.api.VkWallposts.VkWallpostsResponse.VkWallpostsItem
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostsAttachmentType
@@ -62,13 +68,39 @@ data class VkCommunityContentManagerAgentResult(
     val response: String,
 )
 
-data class AppropriateMusicMedia(
+data class AppropriateMusicMediaAttachment(
+    val attachment: VkWallpostsItem.VkWallpostsAttachment,
+    val llmChoice: LlmAppropriateMusicMedia,
+)
+
+data class LlmAppropriateMusicMedia(
     @get:JsonPropertyDescription("Идентификатор владельца трека (ownerId)")
-    val ownerId: String,
-    @get:JsonPropertyDescription("Идентификатор самого трекаы (id)")
-    val id: String,
-    @get:JsonPropertyDescription("Причина по которой был выбран этот трек")
-    val chooseModelExplanation: String,
+    val ownerId: Int,
+    @get:JsonPropertyDescription("Идентификатор самого трека (id)")
+    val id: Int,
+    @get:JsonPropertyDescription("Причина по которой был сделан выбор")
+    val modelChoiceExplanation: String,
+)
+
+data class AppropriateImageMediaAttachment(
+    val attachment: VkWallpostsItem.VkWallpostsAttachment,
+    val llmChoice: LlmAppropriateImageMedia,
+)
+
+data class LlmAppropriateImagesMedia(
+    @get:JsonPropertyDescription("Указанные фотографии в запросе")
+    val images: List<LlmAppropriateImageMedia>,
+)
+
+data class LlmAppropriateImageMedia(
+    @get:JsonPropertyDescription("Идентификатор владельца картинки (ownerId)")
+    val ownerId: Int,
+    @get:JsonPropertyDescription("Идентификатор самой картинки (id)")
+    val id: Int,
+    @get:JsonPropertyDescription("Эта картинка понравилась модели - true, иначе - false")
+    val modelChoice: Boolean,
+    @get:JsonPropertyDescription("Пояснение модели, почему картинка понравилась")
+    val modelChoiceExplanation: String,
 )
 
 @Agent(
@@ -77,10 +109,11 @@ data class AppropriateMusicMedia(
 )
 class VkCommunityContentManagerAgent(
     private val telegramApi: TelegramApi,
+    private val telegramReportChat: TelegramReportChat,
     private val vkApi: VkApi,
     private val imagesApi: ImagesApi,
     private val discogsApi: DiscogsApi,
-    private val vkCommunity: VkCommunity,
+    private val vkManagerCommunity: VkCommunity,
     private val vkContentProvider: VkContentProvider,
 ) {
     @Action(description = "Собирает актуальное состояние контента в сообществе для принятия дальнейших решений")
@@ -88,7 +121,7 @@ class VkCommunityContentManagerAgent(
         val lastCommunityWallposts =
             vkApi
                 .getLastWallposts(
-                    domain = vkCommunity.domain,
+                    domain = vkManagerCommunity.domain,
                     count = 10,
                 ).orThrow()
                 .response.items
@@ -99,7 +132,7 @@ class VkCommunityContentManagerAgent(
                             comments =
                                 vkApi(
                                     GetComments(
-                                        ownerId = vkCommunity.id,
+                                        ownerId = vkManagerCommunity.id,
                                         postId = post.id,
                                     ),
                                 ).orThrow().response.items,
@@ -120,9 +153,6 @@ class VkCommunityContentManagerAgent(
         operationContext: OperationContext,
         actualCommunityContent: ActualCommunityContent,
     ): PublishNewContentVerdictSomeOf =
-        // PublishNewContentVerdictSomeOf(
-        //     shouldPublishNewContent = ShouldPublishNewContent("verdict.modelResultExplanation"),
-        // )
         operationContext
             .ai()
             .withLlm(YabarsikLlmModels.GENERIC_MODEL.modelName)
@@ -132,6 +162,10 @@ class VkCommunityContentManagerAgent(
                 PublishNewContentVerdict::class.java,
                 mapOf("content" to actualCommunityContent),
             ).let { verdict ->
+                telegramApi.sendMessage(
+                    chatId = telegramReportChat.chatId,
+                    message = verdict.modelResultExplanation,
+                )
                 if (verdict.shouldPublish) {
                     PublishNewContentVerdictSomeOf(
                         shouldPublishNewContent = ShouldPublishNewContent(verdict.modelResultExplanation),
@@ -149,7 +183,7 @@ class VkCommunityContentManagerAgent(
         VkCommunityContentManagerAgentResult(verdict.modelResultExplanation)
 
     @Action(description = "Отбирает подходящее музыкально сопровождение для публикации")
-    fun findAppropriateMusicMedia(operationContext: OperationContext): AppropriateMusicMedia {
+    fun findAppropriateMusicMedia(operationContext: OperationContext): AppropriateMusicMediaAttachment {
         val wallpostsCountMemoizationPerDomain = mutableMapOf<String, Int>()
         val collectedAttachments =
             sequence {
@@ -173,7 +207,11 @@ class VkCommunityContentManagerAgent(
         val attachments = collectedAttachments.filter { it.audio!!.ownerId in openOwners }
 
         if (attachments.size <= 2) {
-            throw RuntimeException("findAppropriateMusicMedia: there's not enough (<2) media attachments for ranking")
+            telegramApi.sendMessage(
+                chatId = telegramReportChat.chatId,
+                message = "Не получилось найти подходящее количество треков для ранжирования, возможно, попробую позже еще раз",
+            )
+            throw RuntimeException("findAppropriateMusicMedia: there's not enough (<2) media attachments for LLM ranking")
         }
 
         val discogsArtistReleases: List<ArtistReleases> =
@@ -219,7 +257,7 @@ class VkCommunityContentManagerAgent(
         val lastAudioTracks =
             vkApi
                 .getLastWallposts(
-                    domain = vkCommunity.domain,
+                    domain = vkManagerCommunity.domain,
                     count = 100,
                 ).map { it.response.items }
                 .recover { listOf() }
@@ -245,18 +283,163 @@ class VkCommunityContentManagerAgent(
         return operationContext
             .ai()
             .withLlm(YabarsikLlmModels.GENERIC_MODEL.modelName)
+            .withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
             .rendering("findAppropriateMusicMedia.jinja")
             .createObject(
-                AppropriateMusicMedia::class.java,
+                LlmAppropriateMusicMedia::class.java,
                 mapOf(
                     "attachments" to attachments,
                     "discogsArtistReleases" to discogsArtistReleases,
                     "lastAudioTracks" to lastAudioTracks,
                 ),
-            )
+            ).let { llmChoice ->
+                AppropriateMusicMediaAttachment(
+                    attachment =
+                        attachments.first {
+                            it.audio!!.id == llmChoice.id &&
+                                it.audio.ownerId == llmChoice.ownerId
+                        },
+                    llmChoice = llmChoice,
+                )
+            }
     }
 
-    // @AchievesGoal(description = "")
-    // @Action
-    // fun testTest(obj: AppropriateMusicMedia): VkCommunityContentManagerAgentResult = VkCommunityContentManagerAgentResult("T")
+    @Action(description = "Отбирает подходящее изображение для публикации")
+    fun findAppropriateImageMedia(operationContext: OperationContext): AppropriateImageMediaAttachment {
+        val previousChoiceImages =
+            vkApi
+                .getLastWallposts(
+                    domain = vkManagerCommunity.domain,
+                    count = 100,
+                ).map { it.response.items }
+                .recover { listOf() }
+                .asSequence()
+                .filter {
+                    it.attachments.isNotEmpty() &&
+                        it.attachments.any { image ->
+                            image.photo != null
+                        }
+                }.flatMap {
+                    it.attachments
+                        .asSequence()
+                        .filter { it.photo != null }
+                        .map(VkWallpostAttachment::formAttachmentId)
+                }.toSet()
+
+        val wallpostsCountMemoizationPerDomain = mutableMapOf<String, Int>()
+        val collectedAttachments =
+            sequence {
+                repeat(5) {
+                    val domain = vkContentProvider.getRandomByMedia(ContentMedia.IMAGES).domain
+                    val response =
+                        vkApi
+                            .takeAttachmentsRandomly(
+                                domain = domain,
+                                count = 2,
+                                type = VkWallpostsAttachmentType.PHOTO,
+                                domainWallpostsCount = wallpostsCountMemoizationPerDomain[domain],
+                                excludeWallpostAttachments = previousChoiceImages,
+                            ).orThrow()
+                    wallpostsCountMemoizationPerDomain[domain] = response.totalWallpostsCount
+                    response.attachments.forEach { yield(it) }
+                }
+            }.toList()
+
+        val openOwners = vkApi.getOnlyOpenOwners(collectedAttachments.map { it.photo!!.ownerId })
+
+        val attachments = collectedAttachments.filter { it.photo!!.ownerId in openOwners }
+
+        if (attachments.size <= 2) {
+            telegramApi.sendMessage(
+                chatId = telegramReportChat.chatId,
+                message = "Не получилось найти подходящее количество картинок для ранжирования, возможно, попробую позже еще раз",
+            )
+            throw RuntimeException("there's not enough (<2) media attachments for LLM ranking")
+        }
+
+        return attachments
+            .windowed(size = 3, step = 3, partialWindows = true)
+            .asSequence()
+            .flatMap { attachments ->
+                operationContext
+                    .ai()
+                    .withLlm(YabarsikLlmModels.MULI_MODAL_GENERIC_MODEL.modelName)
+                    .withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
+                    .withImages(
+                        attachments.map { attachment ->
+                            imagesApi(GetImage(attachment.photo!!.origPhoto!!.url)).orThrow().let {
+                                AgentImage.create(
+                                    mimeType = it.mimeType,
+                                    data = it.bytes,
+                                )
+                            }
+                        },
+                    ).rendering("findAppropriateImageMedia.jinja")
+                    .createObject(
+                        LlmAppropriateImagesMedia::class.java,
+                        mapOf(
+                            "attachments" to attachments,
+                        ),
+                    ).images
+            }.firstOrNull {
+                it.modelChoice
+            }?.let { llmChoice ->
+                AppropriateImageMediaAttachment(
+                    attachment =
+                        attachments.first {
+                            it.photo!!.id == llmChoice.id &&
+                                it.photo.ownerId == llmChoice.ownerId
+                        },
+                    llmChoice = llmChoice,
+                )
+            }
+            ?: throw RuntimeException("LLM didn't recognize any appropriate image")
+    }
+
+    @AchievesGoal(description = "Создается свежая публикация в сообществе")
+    @Action
+    fun publishNewWallpost(
+        appropriateMusicMedia: AppropriateMusicMediaAttachment,
+        appropriateImageMedia: AppropriateImageMediaAttachment,
+    ): VkCommunityContentManagerAgentResult {
+        val createdWallpost =
+            vkApi(
+                PostWallpost(
+                    ownerId = vkManagerCommunity.id,
+                    attachments =
+                        listOf(
+                            appropriateMusicMedia.let {
+                                VkPostWallpostAttachment(
+                                    type = VkWallpostsAttachmentType.AUDIO,
+                                    ownerId = it.llmChoice.ownerId,
+                                    mediaId = it.llmChoice.id,
+                                )
+                            },
+                            appropriateImageMedia.let {
+                                VkPostWallpostAttachment(
+                                    type = VkWallpostsAttachmentType.PHOTO,
+                                    ownerId = it.llmChoice.ownerId,
+                                    mediaId = it.llmChoice.id,
+                                )
+                            },
+                        ),
+                ),
+            ).orThrow()
+        val agentResult =
+            """
+            [Создан пост #${createdWallpost.response.postId}](https://vk.com/${vkManagerCommunity.domain}?w=wall${vkManagerCommunity.id}_${createdWallpost.response.postId})
+            
+            [картиночка](${appropriateImageMedia.attachment.photo!!.origPhoto!!.url}) (ownerId=${appropriateMusicMedia.llmChoice.ownerId}, id=${appropriateMusicMedia.llmChoice.id})
+            ${appropriateImageMedia.llmChoice.modelChoiceExplanation}
+            
+            Трек: ${appropriateMusicMedia.attachment.audio!!.artist} — ${appropriateMusicMedia.attachment.audio.title} (ownerId=${appropriateMusicMedia.llmChoice.ownerId}, id=${appropriateMusicMedia.llmChoice.id})
+            ${appropriateMusicMedia.llmChoice.modelChoiceExplanation}
+            """.trimIndent()
+
+        telegramApi.sendMessage(
+            chatId = telegramReportChat.chatId,
+            message = agentResult,
+        )
+        return VkCommunityContentManagerAgentResult(agentResult)
+    }
 }

@@ -4,6 +4,7 @@ import com.github.drewlakee.yabarsik.agents.VkCommunityContentManagerAgent
 import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
+import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChat
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.community.VkCommunity
 import com.github.drewlakee.yabarsik.vk.content.VkContentProvider
@@ -15,6 +16,7 @@ open class EmbabelAgentsContextConfiguration {
     @Bean
     open fun vkCommunityContentManagerAgent(
         telegramApi: TelegramApi,
+        telegramReportChat: TelegramReportChat,
         vkApi: VkApi,
         imagesApi: ImagesApi,
         discogsApi: DiscogsApi,
@@ -22,10 +24,11 @@ open class EmbabelAgentsContextConfiguration {
         vkContentProvider: VkContentProvider,
     ) = VkCommunityContentManagerAgent(
         telegramApi = telegramApi,
+        telegramReportChat = telegramReportChat,
         vkApi = vkApi,
         imagesApi = imagesApi,
         discogsApi = discogsApi,
-        vkCommunity = vkCommunity,
+        vkManagerCommunity = vkCommunity,
         vkContentProvider = vkContentProvider,
     )
 }

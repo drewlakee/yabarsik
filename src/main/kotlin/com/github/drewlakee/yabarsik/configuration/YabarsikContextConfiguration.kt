@@ -6,6 +6,7 @@ import com.github.drewlakee.yabarsik.images.Http
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.telegram.api.http
+import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChat
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.http
 import com.github.drewlakee.yabarsik.vk.community.VkCommunity
@@ -69,6 +70,10 @@ open class YabarsikContextConfiguration {
     @Bean
     @ConfigurationProperties(prefix = "yabarsik.content")
     open fun contentProvidersConfigurationProperties(): ContentProvidersConfigurationProperties = ContentProvidersConfigurationProperties()
+
+    @Bean
+    @ConfigurationProperties(prefix = "yabarsik.telegram.report")
+    open fun telegramReportChat(): TelegramReportChat = TelegramReportChat()
 
     @Bean
     open fun vkContentProvider(configurationProperties: ContentProvidersConfigurationProperties) =
