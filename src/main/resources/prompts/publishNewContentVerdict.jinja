@@ -1,0 +1,27 @@
+## Задача:
+Проанализируй активность последних постов (лайки, репосты, комментарии) и реши, подходящий ли сейчас момент для публикации нового контента.
+
+**Критерии для принятия решения:**
+- Если последний пост получил хорошую активность (много лайков/комментариев), возможно стоит подождать
+- Если прошло достаточно времени с последней публикации, можно публиковать
+- Если последние посты имеют низкую активность, возможно аудитория не готова к новому контенту
+
+## Время на данный момент
+
+{{ nowDateString }}
+
+## Последние посты в сообществе:
+
+{% for communityPost in content.lastWallposts %}
+    ### Пост id: {{ communityPost.wallpost.id }} created: ({{ communityPost.wallpost.dateString }})
+    - **Лайков:** {{ communityPost.wallpost.likes.count }}
+    - **Репостов:** {{ communityPost.wallpost.reposts.count }}
+    - **Комментариев:** {{ communityPost.wallpost.comments.count }}
+    {% if communityPost.comments|length > 0 %}
+        **Комментарии ({{ communityPost.comments|length }}):**
+        {% for comment in communityPost.comments %}
+            - ({{ comment.dateString }}): {{ comment.text }}
+        {% endfor %}
+    {% endif %}
+
+{% endfor %}

@@ -6,11 +6,14 @@ import org.http4k.cloudnative.RemoteRequestFailed
 import org.http4k.connect.Action
 
 enum class ImageType {
-    JPEG, PNG, GIF, BMP, UNKNOWN
+    JPEG,
+    PNG,
+    GIF,
+    BMP,
+    UNKNOWN,
 }
 
 interface ImagesApiAction<R> : Action<Result4k<R, RemoteRequestFailed>> {
-
     companion object {
         fun getImageType(byteArray: ByteArray): ImageType {
             if (byteArray.size < 8) { // Minimum size to check for common headers
@@ -20,7 +23,8 @@ interface ImagesApiAction<R> : Action<Result4k<R, RemoteRequestFailed>> {
             // JPEG: Starts with FF D8 FF
             if (byteArray[0].toUByte() == 0xFF.toUByte() &&
                 byteArray[1].toUByte() == 0xD8.toUByte() &&
-                byteArray[2].toUByte() == 0xFF.toUByte()) {
+                byteArray[2].toUByte() == 0xFF.toUByte()
+            ) {
                 return ImageType.JPEG
             }
 
@@ -32,7 +36,8 @@ interface ImagesApiAction<R> : Action<Result4k<R, RemoteRequestFailed>> {
                 byteArray[4].toUByte() == 0x0D.toUByte() &&
                 byteArray[5].toUByte() == 0x0A.toUByte() &&
                 byteArray[6].toUByte() == 0x1A.toUByte() &&
-                byteArray[7].toUByte() == 0x0A.toUByte()) {
+                byteArray[7].toUByte() == 0x0A.toUByte()
+            ) {
                 return ImageType.PNG
             }
 
@@ -42,13 +47,15 @@ interface ImagesApiAction<R> : Action<Result4k<R, RemoteRequestFailed>> {
                 byteArray[2].toUByte() == 0x46.toUByte() &&
                 byteArray[3].toUByte() == 0x38.toUByte() &&
                 (byteArray[4].toUByte() == 0x37.toUByte() || byteArray[4].toUByte() == 0x39.toUByte()) &&
-                byteArray[5].toUByte() == 0x61.toUByte()) {
+                byteArray[5].toUByte() == 0x61.toUByte()
+            ) {
                 return ImageType.GIF
             }
 
             // BMP: Starts with 42 4D
             if (byteArray[0].toUByte() == 0x42.toUByte() &&
-                byteArray[1].toUByte() == 0x4D.toUByte()) {
+                byteArray[1].toUByte() == 0x4D.toUByte()
+            ) {
                 return ImageType.BMP
             }
 
@@ -63,9 +70,10 @@ interface ImagesApi {
     companion object
 }
 
-fun ImagesApi.Companion.Http() = object : ImagesApi {
-    private val http = OkHttp()
+fun ImagesApi.Companion.Http() =
+    object : ImagesApi {
+        private val http = OkHttp()
 
-    override fun <R : Any> invoke(action: ImagesApiAction<R>): Result4k<R, RemoteRequestFailed> =
-        action.toResult(http(action.toRequest()))
-}
+        override fun <R : Any> invoke(action: ImagesApiAction<R>): Result4k<R, RemoteRequestFailed> =
+            action.toResult(http(action.toRequest()))
+    }

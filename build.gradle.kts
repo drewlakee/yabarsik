@@ -16,6 +16,9 @@ dependencies {
     implementation("org.http4k:http4k-connect-core:6.17.0.0")
     implementation("org.http4k:http4k-client-okhttp:6.17.0.0")
 
+    implementation("com.embabel.agent:embabel-agent-starter:0.3.4")
+    implementation("com.embabel.agent:embabel-agent-openai:0.3.4")
+
     testImplementation(kotlin("test"))
 }
 
@@ -50,9 +53,17 @@ tasks.register<Exec>("ycDeployFunctionProduction") {
     dependsOn("ycFunctionZip")
 
     workingDir = File("build/yc")
-    executable = providers.exec { commandLine( "which", "yc") }.standardOutput.asText.get().trimIndent()
+    executable =
+        providers
+            .exec { commandLine("which", "yc") }
+            .standardOutput.asText
+            .get()
+            .trimIndent()
     args(
-        "serverless", "function", "version", "create",
+        "serverless",
+        "function",
+        "version",
+        "create",
         "--function-name=yabarsik",
         "--runtime=kotlin20",
         "--entrypoint=com.github.drewlakee.yabarsik.YcHandler",
@@ -61,7 +72,7 @@ tasks.register<Exec>("ycDeployFunctionProduction") {
         "--source-path=ycFunction.zip",
         "--tags=production",
         "--service-account-id=ajeduks5d1ag7q1rkbo6",
-        "--environment=CONFIGURATION_S3_OBJECT_ID=configuration.yml,CONFIGURATION_S3_BUCKET=yabarsik",
+        "--environment=CONFIGURATION_S3_OBJECT_ID=application-production.yaml,CONFIGURATION_S3_BUCKET=yabarsik",
         "--secret=environment-variable=TELEGRAM_TOKEN,id=e6qunf2om3830utk4li6,key=token",
         "--secret=environment-variable=AWS_ACCESS_KEY_ID,id=e6q7hvehrvtsf655otla,key=key-identifier",
         "--secret=environment-variable=AWS_SECRET_ACCESS_KEY,id=e6q7hvehrvtsf655otla,key=secret-key",
@@ -76,9 +87,17 @@ tasks.register<Exec>("ycDeployFunctionTesting") {
     dependsOn("ycFunctionZip")
 
     workingDir = File("build/yc")
-    executable = providers.exec { commandLine( "which", "yc") }.standardOutput.asText.get().trimIndent()
+    executable =
+        providers
+            .exec { commandLine("which", "yc") }
+            .standardOutput.asText
+            .get()
+            .trimIndent()
     args(
-        "serverless", "function", "version", "create",
+        "serverless",
+        "function",
+        "version",
+        "create",
         "--function-name=yabarsik",
         "--runtime=kotlin20",
         "--entrypoint=com.github.drewlakee.yabarsik.YcHandler",
@@ -87,7 +106,7 @@ tasks.register<Exec>("ycDeployFunctionTesting") {
         "--source-path=ycFunction.zip",
         "--service-account-id=ajeduks5d1ag7q1rkbo6",
         "--tags=testing",
-        "--environment=CONFIGURATION_S3_OBJECT_ID=configuration-testing.yml,CONFIGURATION_S3_BUCKET=yabarsik",
+        "--environment=CONFIGURATION_S3_OBJECT_ID=application-testing.yaml,CONFIGURATION_S3_BUCKET=yabarsik",
         "--secret=environment-variable=TELEGRAM_TOKEN,id=e6qunf2om3830utk4li6,key=token",
         "--secret=environment-variable=AWS_ACCESS_KEY_ID,id=e6q7hvehrvtsf655otla,key=key-identifier",
         "--secret=environment-variable=AWS_SECRET_ACCESS_KEY,id=e6q7hvehrvtsf655otla,key=secret-key",

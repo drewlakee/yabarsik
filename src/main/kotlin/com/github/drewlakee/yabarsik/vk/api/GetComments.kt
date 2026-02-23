@@ -1,7 +1,5 @@
-// https://dev.vk.com/ru/method/groups.getById
 package com.github.drewlakee.yabarsik.vk.api
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -10,38 +8,44 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import java.time.Instant
 
-data class VkGroups(
+data class VkWallpostComments(
     val response: Response,
 ) {
     data class Response(
-        val groups: List<Group>,
+        val count: Int,
+        val items: List<VkWallpostComment>,
     ) {
-        data class Group(
-            val id: Int,
-            val name: String,
-            @field:JsonProperty("screen_name") val screenName: String,
-            @field:JsonProperty("is_closed") val isClosed: Int,
-        )
+        data class VkWallpostComment(
+            val date: Long,
+            val text: String,
+        ) {
+            val dateString = Instant.ofEpochSecond(date).toString()
+        }
     }
 }
 
-data class GetGroups(
-    val groupIds: List<Int>,
-) : VkApiAction<VkGroups> {
-    override fun toRequest() =
-        Request(Method.POST, "/method/groups.getById")
+data class GetComments(
+    val ownerId: Int,
+    val postId: Int,
+) : VkApiAction<VkWallpostComments> {
+    override fun apiAccessToken(): VkAccessToken = VkAccessToken.SERVICE
+
+    override fun toRequest(): Request =
+        Request(Method.POST, "/method/wall.getComments")
             .body(
                 listOf(
-                    "group_ids=${groupIds.joinToString(",")}",
+                    "owner_id=$ownerId",
+                    "post_id=$postId",
                     "v=5.199",
-                ).filter { it != null }.joinToString(separator = "&"),
+                ).joinToString(separator = "&"),
             )
 
-    override fun toResult(response: Response): Result4k<VkGroups, RemoteRequestFailed> =
+    override fun toResult(response: Response): Result4k<VkWallpostComments, RemoteRequestFailed> =
         when (response.status) {
             Status.OK -> {
-                runCatching { VkApiAction.jsonTo<VkGroups>(response.body) }
+                runCatching { VkApiAction.jsonTo<VkWallpostComments>(response.body) }
                     .let {
                         if (it.isSuccess) {
                             Success(it.getOrNull()!!)
@@ -56,6 +60,4 @@ data class GetGroups(
                 Failure(RemoteRequestFailed(response.status, response.bodyString()))
             }
         }
-
-    override fun apiAccessToken(): VkAccessToken = VkAccessToken.SERVICE
 }

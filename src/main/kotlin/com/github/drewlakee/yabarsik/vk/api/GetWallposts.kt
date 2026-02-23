@@ -4,10 +4,8 @@ package com.github.drewlakee.yabarsik.vk.api
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonValue
-import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
-import com.github.drewlakee.yabarsik.logError
-import com.github.drewlakee.yabarsik.scenario.vk.AudioTitle
-import com.github.drewlakee.yabarsik.scenario.vk.VkWallpostAttachment
+import com.github.drewlakee.yabarsik.vk.content.AudioTitle
+import com.github.drewlakee.yabarsik.vk.content.VkWallpostAttachment
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -19,6 +17,7 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import java.time.Instant
 import kotlin.random.Random
 
 data class VkWallposts(
@@ -33,7 +32,24 @@ data class VkWallposts(
             val date: Long,
             @field:JsonProperty("postponed_id") val postponedId: Int?,
             val attachments: List<VkWallpostsAttachment>,
+            val likes: Likes,
+            val reposts: Reposts,
+            val comments: Comments,
         ) {
+            val dateString = Instant.ofEpochSecond(date).toString()
+
+            data class Comments(
+                val count: Int,
+            )
+
+            data class Likes(
+                val count: Int,
+            )
+
+            data class Reposts(
+                val count: Int,
+            )
+
             data class VkWallpostsAttachment(
                 val type: VkWallpostsAttachmentType,
                 val photo: VkWallpostsAttachmentPhoto?,
@@ -72,7 +88,6 @@ data class GetWallposts(
         Request(Method.POST, "/method/wall.get")
             .body(
                 listOf(
-                    "access_token=$VK_SERVICE_ACCESS_TOKEN",
                     "domain=$domain",
                     "offset=${Math.max(0, offset)}",
                     "count=${Math.max(0, count.coerceAtMost(100))}",
@@ -82,18 +97,24 @@ data class GetWallposts(
 
     override fun toResult(response: Response): Result4k<VkWallposts, RemoteRequestFailed> =
         when (response.status) {
-            Status.OK ->
+            Status.OK -> {
                 runCatching { VkApiAction.jsonTo<VkWallposts>(response.body) }
                     .let {
                         if (it.isSuccess) {
                             Success(it.getOrNull()!!)
                         } else {
-                            it.exceptionOrNull()?.run(::logError)
+                            it.exceptionOrNull()?.run(::println)
                             Failure(RemoteRequestFailed(response.status, response.bodyString()))
                         }
                     }
-            else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            }
+
+            else -> {
+                Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            }
         }
+
+    override fun apiAccessToken(): VkAccessToken = VkAccessToken.SERVICE
 }
 
 enum class VkWallpostsAttachmentType(
@@ -103,7 +124,8 @@ enum class VkWallpostsAttachmentType(
     AUDIO("audio"),
 
     @JsonEnumDefaultValue
-    UNKNOWN("unknown");
+    UNKNOWN("unknown"),
+    ;
 
     override fun toString(): String = type
 }
@@ -117,11 +139,15 @@ fun VkApi.getTotalWallpostsCount(domain: String): Result4k<Int, RemoteRequestFai
         ),
     ).map { it.response.count }
 
-fun VkApi.getLastWallposts(domain: String): Result4k<VkWallposts, RemoteRequestFailed> =
+fun VkApi.getLastWallposts(
+    domain: String,
+    count: Int = 100,
+): Result4k<VkWallposts, RemoteRequestFailed> =
     invoke(
         GetWallposts(
             domain = domain,
             offset = 0,
+            count = count.coerceAtMost(100),
         ),
     )
 
@@ -134,7 +160,7 @@ fun VkApi.takeAttachmentsRandomly(
     domain: String,
     count: Int,
     type: VkWallpostsAttachmentType,
-    domainWallpostsCount: Int?,
+    domainWallpostsCount: Int? = null,
     excludedAudioTitles: Set<AudioTitle>? = null,
     excludeWallpostAttachments: Set<VkWallpostAttachment>? = null,
 ): Result4k<RandomVkAttachments, RemoteRequestFailed> =
@@ -155,7 +181,7 @@ fun VkApi.takeAttachmentsRandomly(
                                 },
                             count = 100,
                         ),
-                    ).peekFailure(::logError)
+                    ).peekFailure(::println)
                         .map {
                             val attachments = mutableListOf<VkWallposts.VkWallpostsResponse.VkWallpostsItem.VkWallpostsAttachment>()
                             val buffer = it.response.items.toMutableList()
@@ -170,13 +196,13 @@ fun VkApi.takeAttachmentsRandomly(
                                             excludeWallpostAttachments?.let {
                                                 VkWallpostAttachment.formAttachmentId(attachment) !in excludeWallpostAttachments
                                             } ?: true
-                                        }
-                                        .filter { attachment -> attachment.type == type }
+                                        }.filter { attachment -> attachment.type == type }
                                         .firstOrNull()
                                 with(anyFirstAttachmentOrNull) {
                                     when {
                                         this == null -> {}
-                                        this.type == VkWallpostsAttachmentType.AUDIO ->
+
+                                        this.type == VkWallpostsAttachmentType.AUDIO -> {
                                             if (
                                                 this.audio!!.url.isNotBlank() &&
                                                 excludedAudioTitles?.let { titles ->
@@ -185,11 +211,17 @@ fun VkApi.takeAttachmentsRandomly(
                                             ) {
                                                 attachments.add(this)
                                             }
-                                        this.type == VkWallpostsAttachmentType.PHOTO ->
+                                        }
+
+                                        this.type == VkWallpostsAttachmentType.PHOTO -> {
                                             if (this.photo!!.origPhoto != null) {
                                                 attachments.add(this)
                                             }
-                                        else -> attachments.add(this)
+                                        }
+
+                                        else -> {
+                                            attachments.add(this)
+                                        }
                                     }
                                 }
                             }
@@ -197,9 +229,8 @@ fun VkApi.takeAttachmentsRandomly(
                             attachments
                         }.recover { listOf() }
                         .forEach { attachment ->
-                            if (this.size < count) {
-                                add(attachment)
-                            } else {
+                            add(attachment)
+                            if (size == count) {
                                 return@buildList
                             }
                         }
@@ -210,4 +241,4 @@ fun VkApi.takeAttachmentsRandomly(
                     attachments = it,
                 )
             }
-        }.peekFailure(::logError)
+        }.peekFailure(::println)

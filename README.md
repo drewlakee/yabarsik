@@ -1,23 +1,194 @@
 # Это функция по имени Барсик 🐈
 
-<img width="200" height="200" alt="barsik-mascot" src="https://github.com/user-attachments/assets/89a3d2b8-f1cf-47e7-b455-45afab207d14" /> 
+<img width="200" height="200" alt="barsik-mascot" src="https://github.com/user-attachments/assets/89a3d2b8-f1cf-47e7-b455-45afab207d14" />
 
-Он хостится как функция в [Yandex Cloud Functions](https://yandex.cloud/ru/docs/functions/).
+Барсик — это автоматизированный агент для управления контентом сообщества ВКонтакте, работающий на базе AI и размещённый в [Yandex Cloud Functions](https://yandex.cloud/ru/docs/functions/).
 
-По задумке на вход он ничего не принимает, только периодически запускается
-и делает полезную работу.
+## Описание
 
-Его главная забота - поддерживать [паблик](https://vk.com/kittiesnemo) контентом.
+Барсик самостоятельно управляет [пабликом](https://vk.com/kittiesnemo), автоматически публикуя музыкальный контент и изображения. Он использует большие языковые модели для принятия решений о публикациях и отбора качественного контента.
 
-Как Барсик будет это делать?
+### Основные возможности
 
-- Ходить по пабликам и искать музыку при помощи [YandexGPT](https://yandex.cloud/ru/docs/foundation-models/) по конкретным жанрам
-- Искать подобных себе усачей на просторах Интернета, отбирать подходящих с помощью того же [YandexGPT](https://yandex.cloud/ru/docs/foundation-models/) и делиться ими в [паблике](https://vk.com/kittiesnemo)
-- Просыпаться каждый день и заниматься данными задачами, самостоятельно принимая решение о необходимости нового контента на странице [паблика](https://vk.com/kittiesnemo)
+- 🎵 **Музыкальный куратор**: Ищет музыку по профилю жанров в сообществах ВКонтакте, используя LLM для оценки релевантности треков
+- 🐱 **Отбор изображений**: Находит качественные фотографии с помощью мультимодальной AI модели, проверяя соответствие критериям качества
+- 🤖 **Автономное принятие решений**: Анализирует активность сообщества и самостоятельно решает, когда публиковать новый контент
+- 📊 **Аналитика уникальности**: Проверяет уникальность контента относительно истории публикаций сообщества
+- 📢 **Отчётность**: Отправляет отчёты о своей работе в Telegram
 
-Конфигурация Барсика собирается лежать в [Yandex Object Storage](https://yandex.cloud/en/services/storage).
+## Архитектура
 
-Сообщать о своих трудностях Барсик будет в [Telegram](https://core.telegram.org/) чате.   
+### Технологический стек
+
+- **Язык**: Kotlin 2.2.0
+- **Runtime**: JVM 21
+- **Фреймворк**: Spring (для DI и конфигурации)
+- **AI Framework**: [Embabel Agent SDK](https://github.com/embabel) v0.3.4 — для построения AI-агентов
+- **Serverless**: Yandex Cloud Functions
+- **Конфигурация**: YAML (хранится в Yandex Object Storage S3)
+- **API интеграции**:
+  - VK API — для работы с контентом ВКонтакте
+  - Yandex LLM API (YandexGPT) — для LLM моделей
+  - Telegram Bot API — для отправки отчётов
+  - Discogs API — для обогащения контекста о музыкальных исполнителях
+  - AWS S3 SDK — для работы с Yandex Object Storage
+
+### Компоненты системы
+
+```
+┌─────────────────────────────────────────────────┐
+│         Yandex Cloud Function                   │
+│                  (YcHandler)                    │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ├─> Загрузка конфигурации из S3
+                 │
+                 ├─> Инициализация Spring Context
+                 │
+                 └─> Запуск AgentPlatform
+                     │
+                     ├─> VkCommunityContentManagerAgent
+                     │   ├─> collectCommunityContent()
+                     │   ├─> givesNewContentPublishVerdict()
+                     │   ├─> findAppropriateMusicMedia()
+                     │   ├─> findAppropriateImageMedia()
+                     │   └─> publishNewWallpost()
+                     │
+                     ├─> API Clients
+                     │   ├─> VkApi
+                     │   ├─> TelegramApi
+                     │   ├─> DiscogsApi
+                     │   ├─> ImagesApi
+                     │   └─> YandexS3Api
+                     │
+                     └─> LLM Models
+                         ├─> Generic Model (gpt-oss-120b)
+                         └─> Multi-Modal Model (gemma-3-27b-it)
+```
+
+## Конфигурация
+
+### Переменные окружения
+
+Приложение использует Spring для загрузки конфигурации из Yandex Object Storage S3. Основные параметры передаются через переменные окружения:
+
+#### Обязательные переменные
+
+| Переменная | Описание |
+|-----------|----------|
+| `CONFIGURATION_S3_BUCKET` | Bucket в S3 для хранения конфигурации (например, `yabarsik`) |
+| `CONFIGURATION_S3_OBJECT_ID` | Имя файла конфигурации в S3 (например, `application-production.yaml`) |
+| `AWS_ACCESS_KEY_ID` | Ключ доступа к Yandex Object Storage |
+| `AWS_SECRET_ACCESS_KEY` | Секретный ключ для Yandex Object Storage |
+| `YANDEX_CLOUD_LLM_API_KEY` | API ключ для доступа к Yandex LLM API |
+| `VK_SERVICE_ACCESS_TOKEN` | Сервисный токен VK для доступа к API |
+| `VK_COMMUNITY_ACCESS_TOKEN` | Токен сообщества VK для публикации постов |
+| `TELEGRAM_TOKEN` | Токен Telegram бота для отправки отчётов |
+| `DISCOGS_TOKEN` | Токен для Discogs API |
+
+### Конфигурационные файлы
+
+#### `application-production.yaml` / `application-testing.yaml`
+
+```yaml
+# Настройки Embabel Agent Platform
+embabel:
+  models:
+    default-llm: generic-model  # Модель по умолчанию
+  agent:
+    platform:
+      action-qos:
+        maxAttempts: 3           # Максимум попыток выполнения действия
+      llm-operations:
+        data-binding:
+          max-attempts: 2        # Попытки парсинга ответа LLM
+
+# Настройки Yabarsik
+yabarsik:
+  # Yandex Object Storage (S3)
+  s3:
+    access-key-id: ${AWS_ACCESS_KEY_ID}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+    configuration-object-id: ${CONFIGURATION_S3_OBJECT_ID}
+    configuration-bucket: ${CONFIGURATION_S3_BUCKET}
+
+  # ВКонтакте
+  vk:
+    service-token: ${VK_SERVICE_ACCESS_TOKEN}
+    community-token: ${VK_COMMUNITY_ACCESS_TOKEN}
+    community:
+      id: -161290464              # ID сообщества (production)
+      domain: kittiesnemo         # Домен сообщества (production)
+
+  # Telegram
+  telegram:
+    token: ${TELEGRAM_TOKEN}
+    report:
+      chatId: -4972260104         # ID чата для отчётов
+
+  # Discogs
+  discogs:
+    token: ${DISCOGS_TOKEN}
+
+  # OpenAI-совместимый API для Yandex LLM
+  openai:
+    base-url: https://llm.api.cloud.yandex.net
+    api-key: ${YANDEX_CLOUD_LLM_API_KEY}
+
+    # Текстовая модель (для анализа музыки и принятия решений)
+    generic-model:
+      name: "gpt://b1gioucfterb2rnsqb1q/gpt-oss-120b"
+      retry:
+        max-attempts: 3
+        backoff-initial-interval-millis: 2000
+        backoff-multiplier: 5.0
+        backoff-max-interval-millis: 180000
+
+    # Мультимодальная модель (для анализа изображений)
+    multi-modal-generic-model:
+      name: "gpt://b1gioucfterb2rnsqb1q/gemma-3-27b-it"
+      retry:
+        max-attempts: 3
+        backoff-initial-interval-millis: 2000
+        backoff-multiplier: 5.0
+        backoff-max-interval-millis: 180000
+
+  # Источники контента (сообщества ВКонтакте)
+  content:
+    providers:
+      # Примеры источников для изображений
+      - provider: VK
+        domain: -119717318
+        media:
+          - IMAGES
+      - provider: VK
+        domain: -122103467
+        media:
+          - IMAGES
+
+      # Примеры источников для музыки
+      - provider: VK
+        domain: -125253023
+        media:
+          - MUSIC
+      - provider: VK
+        domain: -18014153
+        media:
+          - MUSIC
+```
+
+### Промпт-шаблоны (Jinja2)
+
+Барсик использует Jinja2 шаблоны для генерации промптов к LLM. Шаблоны находятся в `src/main/resources/prompts/`:
+
+#### `publishNewContentVerdict.jinja`
+Анализирует последние посты и принимает решение о публикации.
+
+#### `findAppropriateMusicMedia.jinja`
+Выбирает наиболее подходящий трек из коллекции.
+
+#### `findAppropriateImageMedia.jinja`
+Оценивает качество и соответствие изображений критериям.
 
 # Деплой Барсика
 
@@ -53,140 +224,4 @@ tasks.register<Exec>("ycDeployFunctionTesting")
 
 // переменная для доступа к токену DiscogsAPI
 "--secret=environment-variable=DISCOGS_TOKEN,id=e6qos1a86pmne2pehkgh,key=token"
-```
-
-# Конфигурация Барсика
-
-```yaml
-# Настройки планировщика 
-wallposts:
-  # Сообщество ради которого Барсик трудится
-  communityId: -161290464
-  # Домен паблика Вконтакте
-  domain: kittiesnemo
-  # Ежедневное расписание
-  dailySchedule:
-    timeZone: Europe/Moscow
-    # Кулдаун между двумя постами
-    periodBetweenPostings: PT4H
-    # Точки во времени, когда Барсик должен сделать пост
-    checkpoints:
-      - at: 09:00
-        # Дополнительное время от момента в расписании,
-        # используется для увеличения случайности, иначе PT0H - в тот же момент
-        amortizationDuration: PT1H
-      - at: 14:00
-        amortizationDuration: PT1H
-      - at: 20:00
-        amortizationDuration: PT1H
-
-# Настройки облака в Yandex.Cloud
-cloud:
-  function:
-    # Каталога проекта
-    folderId: b1gioucfterb2rnsqb1q
-
-# Настройки для LLM
-llm:
-  # Настройки для модели текст-текст
-  textGtp:
-    model: gpt-oss-120b
-    # Контракт интерфейса к модели YANDEX/OPENAI
-    api: OPENAI
-  # Настройки для модели текст+изображение-текст
-  multiModalGpt:
-    model: gemma-3-27b-it
-    api: OPENAI
-  # Пример промта для подбора музыки
-  audioPromt:
-    temperature: 0.3
-    # Используется для обогащения контекста для модели об исполнителях из discogs API 
-    discogsContext: 'В случае если ты совсем ничего не знаешь о данных исполнителях, то при оценке исполнителей ориентируйся на вспомогательные данные, полученные об исполнителях с сервиса discogs.com:'
-    systemInstruction: 'Ты - опытный музыкальный слушатель и поклонник таких жанров как emo и midwest-emo, 
-                                ты также иногда не прочь послушать жанры как math-rock, melodic-hardcore, pop-punk. 
-                                Обычно ты используешь такие сервисы как bandcamp.com, spotify.com, last.fm, яндекс музыка.
-                                
-                                Пользователь будет тебе передавать данные о группах: группу, группа, и так далее.
-                                На основе перечисленных групп от пользователя, оцени отношение от 0.00 до 1.00 этих групп к твоим любимым жанрам.
-                                Ответ дай без комментариев и дополнительной информации. Твой формат ответа должен быть следующий: 
-                                
-                                {
-                                    "result": [
-                                        {
-                                            "band": "название группы",
-                                            "approval": <от 0.00 до 1.00>
-                                        },
-                                        {
-                                            "band": "название группы",
-                                            "approval": <от 0.00 до 1.00>
-                                        }
-                                    ]
-                                }'
-    
-  # Пример промта для отбора картинок
-  photoPromt:
-    temperature: 1.0
-    systemInstruction: 'Ты - любитель кошек, котов, котиков. Ты обладаешь своим сообществом, где делишься фотографиями этих животных.
-                                Ты очень хочешь, чтобы твоим подписчикам понравился тот контент, который ты выбираешь для очередного поста в сообществе.
-                                Ты тщательно проверяешь каждую фотографию на соответствие следующим требованиям:
-                                 
-                                - фото по краям не обрезано и не имеет никакого однотонного фона 
-                                - фото в четком качестве 
-                                - фото не имеет никаких иконок или водяных знаков 
-                                - фото естественное, то есть снятое на телефон или камеру
-                                - фото без надписей и текста 
-                                - фото без человека
-                                - фото без 18+ контента 
-                                - фото без присутствия ран или ссадин 
-                                - фото без крови
-                                - на фото есть животное анатомически и физиалогически похожее на кошку или кота или котенка
-                                - на фото нет специальных эффектов, которые могли бы быть наложены через такие программы как photoshop
-                                
-                                На основе перечисленных фотографий от пользователя, дай свой вердикт на соответствие твоим требованиям, где true - соответствует, а false - не соответствует.
-                                Пользователь передаст тебе фото в таком порядке <идентификатор фото>, <само фото>, <идентификатор фото>, <само фото>, и так далее.
-                                Ответ дай без комментариев, без дополнительной информации, без знаков форматирования, ответ никак не форматируй, оставь в чистом виде JSON-объект. 
-                                Не используй в ответе символы ``` и слова json.
-                                Твой формат ответа должен быть следующий:
-                                
-                                {
-                                    "result": [
-                                        {
-                                            "photo": "идентификатор фото",
-                                            "approval": true
-                                        },
-                                        {
-                                            "photo": "идентификатор фото",
-                                            "approval": false
-                                        }
-                                    ]
-                                }'
-
-# Настройки для поиска контента во Вконтакте
-content:
-  settings:
-    # Набор данных для анализа перед конечной выборкой
-    musicAttachmentsCollectorSize: 10
-    # Разброс для подбора данных в каждом провайдере
-    takeMusicAttachmentsPerProvider: 3
-    imagesAttachmentsCollectorSize: 6
-    takeImagesAttachmentsPerProvider: 2
-    # Веса для отбора конечной выборки в музыке
-    musicLlmApprovalThreshold: 0.6
-    # Уникальность контента относительно паблика на протяжении времени (дни)
-    attachmentsUniquenessDepthInDays: 30
-  # Источники для контента
-  providers:
-    - provider: VK
-      domain: -119717318
-      media:
-        - IMAGES
-    - provider: VK
-      domain: -125253023
-      media:
-        - MUSIC
-
-# Настройки для отчетов в Telegram
-telegram:
-  report:
-    chatId: -4972260104
 ```

@@ -1,60 +1,75 @@
 // https://yandex.cloud/ru/docs/functions/concepts/function-invoke
 package com.github.drewlakee.yabarsik
 
-import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
-import com.github.drewlakee.yabarsik.discogs.api.Http
-import com.github.drewlakee.yabarsik.images.Http
-import com.github.drewlakee.yabarsik.images.ImagesApi
-import com.github.drewlakee.yabarsik.scenario.play
-import com.github.drewlakee.yabarsik.scenario.vk.DailyScheduleWatching
-import com.github.drewlakee.yabarsik.telegram.api.Http
-import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
-import com.github.drewlakee.yabarsik.vk.api.Http
-import com.github.drewlakee.yabarsik.vk.api.VkApi
-import com.github.drewlakee.yabarsik.yandex.llm.api.Http
-import com.github.drewlakee.yabarsik.yandex.llm.api.YandexLlmModelsApi
-import com.github.drewlakee.yabarsik.yandex.s3.api.Http
+import com.embabel.agent.api.invocation.AgentInvocation
+import com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
+import com.embabel.agent.core.AgentPlatform
+import com.embabel.agent.core.ProcessOptions
+import com.embabel.agent.core.Verbosity
+import com.github.drewlakee.yabarsik.agents.VkCommunityContentManagerAgentResult
+import com.github.drewlakee.yabarsik.configuration.EmbabelAgentsContextConfiguration
+import com.github.drewlakee.yabarsik.configuration.EmbabelOpenAiModelsContextConfiguration
+import com.github.drewlakee.yabarsik.configuration.YabarsikContextConfiguration
 import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
+import com.github.drewlakee.yabarsik.yandex.s3.api.http
+import dev.forkhandles.result4k.orThrow
+import org.springframework.boot.env.YamlPropertySourceLoader
+import org.springframework.context.annotation.AnnotationConfigApplicationContext
+import org.springframework.core.io.ByteArrayResource
 import yandex.cloud.sdk.functions.Context
 import yandex.cloud.sdk.functions.YcFunction
 
-class Request()
+class Request
 
-data class Response(val message: String) {
+data class Response(
+    val message: String,
+) {
     object Status {
         val OK = Response("OK")
     }
 }
 
 class YcHandler : YcFunction<Request, Response> {
-    override fun handle(request: Request, context: Context): Response {
-        val barsik = runCatching {
-            Barsik(
-                context = context,
-                telegramApi = TelegramApi.Http(),
-                yandexS3Api = YandexS3Api.Http(),
-                yandexLlmModelsApi = YandexLlmModelsApi.Http(),
-                vkApi = VkApi.Http(),
-                imagesApi = ImagesApi.Http(),
-                discogsApi = DiscogsApi.Http(),
-            )
-        }
+    override fun handle(
+        request: Request,
+        context: Context,
+    ): Response {
+        AnnotationConfigApplicationContext()
+            .use { context ->
+                val applicationConfiguration =
+                    YandexS3Api
+                        .http()
+                        .getObject(
+                            bucket = System.getenv("CONFIGURATION_S3_BUCKET"),
+                            objectId = System.getenv("CONFIGURATION_S3_OBJECT_ID"),
+                        ).orThrow()
 
-        if (barsik.isFailure) {
-            barsik.exceptionOrNull()?.run(::logError)
-            return Response("ERROR: ${barsik.exceptionOrNull()?.message ?: "Unknown error"}")
-        }
-
-        with(barsik.getOrThrow()) {
-            play(DailyScheduleWatching()).run {
-                if (sendTelegramMessage()) {
-                    this@with.sendTelegramMessage(
-                        message() + "\n\n${getTelegramFormattedTraceLinK()}"
-                    )
+                YamlPropertySourceLoader().run {
+                    load("applicationProperties", ByteArrayResource(applicationConfiguration.readAllBytes()))
+                        .forEach { source -> context.environment.propertySources.addLast(source) }
                 }
-            }
-        }
+                context.register(
+                    YabarsikContextConfiguration::class.java,
+                    EmbabelOpenAiModelsContextConfiguration::class.java,
+                    EmbabelAgentsContextConfiguration::class.java,
+                    AgentPlatformAutoConfiguration::class.java,
+                )
+                context.refresh()
 
+                val agentPlatform = context.getBean(AgentPlatform::class.java)
+                AgentInvocation
+                    .builder(agentPlatform)
+                    .options(
+                        ProcessOptions(
+                            verbosity =
+                                Verbosity(
+                                    showPrompts = true,
+                                    showLlmResponses = true,
+                                ),
+                        ),
+                    ).build(VkCommunityContentManagerAgentResult::class.java)
+                    .run(mapOf())
+            }
         return Response.Status.OK
     }
 }

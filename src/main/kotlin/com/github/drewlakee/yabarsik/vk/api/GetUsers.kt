@@ -2,8 +2,6 @@
 package com.github.drewlakee.yabarsik.vk.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_SERVICE_ACCESS_TOKEN
-import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -27,28 +25,37 @@ data class VkUsers(
     )
 }
 
-data class GetUsers(val userIds: List<Int>): VkApiAction<VkUsers> {
-    override fun toRequest() = Request(Method.POST, "/method/users.get")
-        .body(
-            listOf(
-                "user_ids=${userIds.joinToString(",")}",
-                "access_token=$VK_SERVICE_ACCESS_TOKEN",
-                "fields=can_see_audio,screen_name",
-                "v=5.199",
-            ).filter { it != null }.joinToString(separator = "&"),
-        )
+data class GetUsers(
+    val userIds: List<Int>,
+) : VkApiAction<VkUsers> {
+    override fun toRequest() =
+        Request(Method.POST, "/method/users.get")
+            .body(
+                listOf(
+                    "user_ids=${userIds.joinToString(",")}",
+                    "fields=can_see_audio,screen_name",
+                    "v=5.199",
+                ).filter { it != null }.joinToString(separator = "&"),
+            )
 
     override fun toResult(response: Response): Result4k<VkUsers, RemoteRequestFailed> =
         when (response.status) {
-            Status.OK -> runCatching { VkApiAction.jsonTo<VkUsers>(response.body) }
-                .let {
-                    if (it.isSuccess) {
-                        Success(it.getOrNull()!!)
-                    } else {
-                        it.exceptionOrNull()?.run(::logError)
-                        Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            Status.OK -> {
+                runCatching { VkApiAction.jsonTo<VkUsers>(response.body) }
+                    .let {
+                        if (it.isSuccess) {
+                            Success(it.getOrNull()!!)
+                        } else {
+                            it.exceptionOrNull()?.run(::println)
+                            Failure(RemoteRequestFailed(response.status, response.bodyString()))
+                        }
                     }
-                }
-            else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            }
+
+            else -> {
+                Failure(RemoteRequestFailed(response.status, response.bodyString()))
+            }
         }
+
+    override fun apiAccessToken(): VkAccessToken = VkAccessToken.SERVICE
 }

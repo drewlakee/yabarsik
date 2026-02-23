@@ -2,8 +2,6 @@
 package com.github.drewlakee.yabarsik.vk.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.github.drewlakee.yabarsik.configuration.BarsikEnvironment.VK_COMMUNITY_ACCESS_TOKEN
-import com.github.drewlakee.yabarsik.logError
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.Success
@@ -13,9 +11,11 @@ import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
 
-data class VkPostWallpost(val response: VkPostWallpostResponse) {
+data class VkPostWallpost(
+    val response: VkPostWallpostResponse,
+) {
     data class VkPostWallpostResponse(
-        @field:JsonProperty("post_id") val postId: Int
+        @field:JsonProperty("post_id") val postId: Int,
     )
 }
 
@@ -24,7 +24,7 @@ data class VkPostWallpostAttachment(
     val ownerId: Int,
     val mediaId: Int,
 ) {
-    override fun toString() = "${type}${ownerId}_${mediaId}"
+    override fun toString() = "${type}${ownerId}_$mediaId"
 }
 
 data class PostWallpost(
@@ -32,27 +32,35 @@ data class PostWallpost(
     val attachments: List<VkPostWallpostAttachment>,
     val publishDate: Long? = null,
 ) : VkApiAction<VkPostWallpost> {
-    override fun toRequest() = Request(Method.POST, "/method/wall.post")
-        .body(
-            listOf(
-                "access_token=$VK_COMMUNITY_ACCESS_TOKEN",
-                "owner_id=$ownerId",
-                publishDate?.let { "publish_date=$it" },
-                if (attachments.isNotEmpty()) "attachments=${attachments.joinToString(",")}" else null,
-                "from_group=1",
-                "v=5.199",
-            ).filter { it != null }.joinToString(separator = "&")
-        )
+    override fun toRequest() =
+        Request(Method.POST, "/method/wall.post")
+            .body(
+                listOf(
+                    "owner_id=$ownerId",
+                    publishDate?.let { "publish_date=$it" },
+                    if (attachments.isNotEmpty()) "attachments=${attachments.joinToString(",")}" else null,
+                    "from_group=1",
+                    "v=5.199",
+                ).filter { it != null }.joinToString(separator = "&"),
+            )
 
-    override fun toResult(response: Response): Result4k<VkPostWallpost, RemoteRequestFailed> = when(response.status) {
-        Status.OK -> runCatching { VkApiAction.jsonTo<VkPostWallpost>(response.body) }.let {
-            if (it.isSuccess) {
-                Success(it.getOrNull()!!)
-            } else {
-                it.exceptionOrNull()?.run(::logError)
+    override fun toResult(response: Response): Result4k<VkPostWallpost, RemoteRequestFailed> =
+        when (response.status) {
+            Status.OK -> {
+                runCatching { VkApiAction.jsonTo<VkPostWallpost>(response.body) }.let {
+                    if (it.isSuccess) {
+                        Success(it.getOrNull()!!)
+                    } else {
+                        it.exceptionOrNull()?.run(::println)
+                        Failure(RemoteRequestFailed(response.status, response.bodyString()))
+                    }
+                }
+            }
+
+            else -> {
                 Failure(RemoteRequestFailed(response.status, response.bodyString()))
             }
         }
-        else -> Failure(RemoteRequestFailed(response.status, response.bodyString()))
-    }
+
+    override fun apiAccessToken(): VkAccessToken = VkAccessToken.COMMUNITY
 }
