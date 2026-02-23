@@ -34,6 +34,7 @@ import dev.forkhandles.result4k.map
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.recover
 import dev.forkhandles.result4k.valueOrNull
+import java.time.Instant
 
 data class PublishNewContentVerdictSomeOf(
     val shouldNotPublishNewContext: ShouldNotPublishNewContext? = null,
@@ -160,7 +161,10 @@ class VkCommunityContentManagerAgent(
             .rendering("publishNewContentVerdict.jinja")
             .createObject(
                 PublishNewContentVerdict::class.java,
-                mapOf("content" to actualCommunityContent),
+                mapOf(
+                    "content" to actualCommunityContent,
+                    "nowDateString" to Instant.now().toString(),
+                ),
             ).let { verdict ->
                 telegramApi.sendMessage(
                     chatId = telegramReportChat.chatId,
@@ -291,6 +295,7 @@ class VkCommunityContentManagerAgent(
                     "attachments" to attachments,
                     "discogsArtistReleases" to discogsArtistReleases,
                     "lastAudioTracks" to lastAudioTracks,
+                    "nowDateString" to Instant.now().toString(),
                 ),
             ).let { llmChoice ->
                 AppropriateMusicMediaAttachment(
