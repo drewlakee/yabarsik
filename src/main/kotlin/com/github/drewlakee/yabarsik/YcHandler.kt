@@ -4,6 +4,8 @@ package com.github.drewlakee.yabarsik
 import com.embabel.agent.api.invocation.AgentInvocation
 import com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
 import com.embabel.agent.core.AgentPlatform
+import com.embabel.agent.core.ProcessOptions
+import com.embabel.agent.core.Verbosity
 import com.github.drewlakee.yabarsik.agents.VkCommunityContentManagerAgentResult
 import com.github.drewlakee.yabarsik.configuration.EmbabelAgentsContextConfiguration
 import com.github.drewlakee.yabarsik.configuration.EmbabelOpenAiModelsContextConfiguration
@@ -55,11 +57,18 @@ class YcHandler : YcFunction<Request, Response> {
                 context.refresh()
 
                 val agentPlatform = context.getBean(AgentPlatform::class.java)
-                val result =
-                    AgentInvocation
-                        .create<VkCommunityContentManagerAgentResult>(agentPlatform)
-                        .run(mapOf())
-                        .last(VkCommunityContentManagerAgentResult::class.java)
+                AgentInvocation
+                    .builder(agentPlatform)
+                    .options(
+                        ProcessOptions(
+                            verbosity =
+                                Verbosity(
+                                    showPrompts = true,
+                                    showLlmResponses = true,
+                                ),
+                        ),
+                    ).build(VkCommunityContentManagerAgentResult::class.java)
+                    .run(mapOf())
             }
         return Response.Status.OK
     }
