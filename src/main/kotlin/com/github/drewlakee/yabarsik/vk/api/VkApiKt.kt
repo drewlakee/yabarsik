@@ -2,40 +2,45 @@ package com.github.drewlakee.yabarsik.vk.api
 
 import dev.forkhandles.result4k.valueOrNull
 
-fun VkApi.getOnlyOpenOwners(ownerIds: List<Int>): Set<Int> =
-    sequence {
-        val (groups, users) = ownerIds.distinct().partition { it.isGroup() }
+fun VkApi.getOnlyOpenOwners(ownerIds: List<Int>): Set<Int> {
+    val (groups, users) = ownerIds.distinct().partition { it.isGroup() }
+
+    val existingUsers =
         if (users.isNotEmpty()) {
-            this@getOnlyOpenOwners
+            this
                 .invoke(GetUsers(users))
                 .valueOrNull()
                 ?.users
-                ?.asSequence()
-                ?.filter { it.isOpenAccount() }
-                ?.map { it.id }
-                ?.forEach { yield(it) }
-            this@getOnlyOpenOwners
-                .invoke(GetGroups(users))
-                .valueOrNull()
-                ?.response
-                ?.groups
-                ?.asSequence()
-                ?.filter { it.isOpenGroup() }
-                ?.map { it.id }
-                ?.forEach { yield(it) }
+                ?.associateBy { it.id }
+                ?: mapOf()
+        } else {
+            mapOf()
         }
+
+    val existingGroups =
         if (groups.isNotEmpty()) {
-            this@getOnlyOpenOwners
+            this
                 .invoke(GetGroups(groups.map { it * -1 }))
                 .valueOrNull()
                 ?.response
                 ?.groups
-                ?.asSequence()
-                ?.filter { it.isOpenGroup() }
-                ?.map { it.id * -1 }
-                ?.forEach { yield(it) }
+                ?.associateBy { it.id * -1 }
+                ?: mapOf()
+        } else {
+            mapOf()
         }
+
+    return sequence {
+        users
+            .asSequence()
+            .filter { it !in existingUsers || existingUsers[it]!!.isOpenAccount() }
+            .forEach { yield(it) }
+        groups
+            .asSequence()
+            .filter { it !in existingGroups || existingGroups[it]!!.isOpenGroup() }
+            .forEach { yield(it) }
     }.toSet()
+}
 
 private fun VkGroups.Response.Group.isOpenGroup() = isClosed == 0
 
