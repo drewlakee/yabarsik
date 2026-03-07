@@ -174,7 +174,7 @@ class VkCommunityContentManagerAgent(
     @AchievesGoal(description = "Создается свежая публикация в сообществе")
     @Action
     fun publishNewWallpost(
-        publishNewContentVerdict: PublishNewContentVerdict,
+        shouldPublishNewContent: ShouldPublishNewContent,
         appropriateMusicMedia: LlmAppropriateMusicMedia,
         appropriateImageMedia: LlmAppropriateImageMedia,
     ): VkCommunityContentManagerAgentResult {
@@ -205,7 +205,7 @@ class VkCommunityContentManagerAgent(
             """
             [Создан пост #${createdWallpost.response.postId}](https://vk.com/${vkManagerCommunity.domain}?w=wall${vkManagerCommunity.id}_${createdWallpost.response.postId})
             
-            ${publishNewContentVerdict.modelResultExplanation}
+            ${shouldPublishNewContent.modelResultExplanation}
             
             [картиночка](${appropriateImageMedia.url}) (ownerId=${appropriateImageMedia.ownerId}, id=${appropriateImageMedia.id})
             ${appropriateImageMedia.modelChoiceExplanation}
