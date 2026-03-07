@@ -14,8 +14,6 @@ import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.prompt.YabarsikPromptContributors
-import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
-import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChat
 import com.github.drewlakee.yabarsik.vk.api.GetComments
 import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
@@ -65,9 +63,15 @@ data class ActualCommunityContent(
     val lastWallposts: List<CommunityWallpost>,
 )
 
-data class VkCommunityContentManagerAgentResult(
-    val response: String,
-)
+sealed interface VkCommunityContentManagerAgentResult {
+    data class AchievedGoal(
+        val message: String,
+    ) : VkCommunityContentManagerAgentResult
+
+    data class IntermediateResult(
+        val message: String,
+    ) : VkCommunityContentManagerAgentResult
+}
 
 data class AppropriateMusicMediaAttachment(
     val attachment: VkWallpostsItem.VkWallpostsAttachment,
@@ -109,8 +113,6 @@ data class LlmAppropriateImageMedia(
     description = "Занимается поиском подходящего контента и принимает решение о его публикации",
 )
 class VkCommunityContentManagerAgent(
-    private val telegramApi: TelegramApi,
-    private val telegramReportChat: TelegramReportChat,
     private val vkApi: VkApi,
     private val imagesApi: ImagesApi,
     private val discogsApi: DiscogsApi,
@@ -166,10 +168,6 @@ class VkCommunityContentManagerAgent(
                     "nowDateString" to Instant.now().toString(),
                 ),
             ).let { verdict ->
-                telegramApi.sendMessage(
-                    chatId = telegramReportChat.chatId,
-                    message = verdict.modelResultExplanation,
-                )
                 if (verdict.shouldPublish) {
                     PublishNewContentVerdictSomeOf(
                         shouldPublishNewContent = ShouldPublishNewContent(verdict.modelResultExplanation),
@@ -184,7 +182,7 @@ class VkCommunityContentManagerAgent(
     @AchievesGoal(description = "Агент решил не публиковать новый контент")
     @Action
     fun doNotPublishAnyContent(verdict: ShouldNotPublishNewContext): VkCommunityContentManagerAgentResult =
-        VkCommunityContentManagerAgentResult(verdict.modelResultExplanation)
+        VkCommunityContentManagerAgentResult.IntermediateResult(verdict.modelResultExplanation)
 
     @Action(description = "Отбирает подходящее музыкально сопровождение для публикации")
     fun findAppropriateMusicMedia(operationContext: OperationContext): AppropriateMusicMediaAttachment {
@@ -211,10 +209,6 @@ class VkCommunityContentManagerAgent(
         val attachments = collectedAttachments.filter { it.audio!!.ownerId in openOwners }
 
         if (attachments.size <= 2) {
-            telegramApi.sendMessage(
-                chatId = telegramReportChat.chatId,
-                message = "Не получилось найти подходящее количество треков для ранжирования, возможно, попробую позже еще раз",
-            )
             throw RuntimeException("findAppropriateMusicMedia: there's not enough (<2) media attachments for LLM ranking")
         }
 
@@ -355,10 +349,6 @@ class VkCommunityContentManagerAgent(
         val attachments = collectedAttachments.filter { it.photo!!.ownerId in openOwners }
 
         if (attachments.size <= 2) {
-            telegramApi.sendMessage(
-                chatId = telegramReportChat.chatId,
-                message = "Не получилось найти подходящее количество картинок для ранжирования, возможно, попробую позже еще раз",
-            )
             throw RuntimeException("there's not enough (<2) media attachments for LLM ranking")
         }
 
@@ -440,11 +430,6 @@ class VkCommunityContentManagerAgent(
             Трек: ${appropriateMusicMedia.attachment.audio!!.artist} — ${appropriateMusicMedia.attachment.audio.title} (ownerId=${appropriateMusicMedia.llmChoice.ownerId}, id=${appropriateMusicMedia.llmChoice.id})
             ${appropriateMusicMedia.llmChoice.modelChoiceExplanation}
             """.trimIndent()
-
-        telegramApi.sendMessage(
-            chatId = telegramReportChat.chatId,
-            message = agentResult,
-        )
-        return VkCommunityContentManagerAgentResult(agentResult)
+        return VkCommunityContentManagerAgentResult.AchievedGoal(agentResult)
     }
 }
