@@ -1,0 +1,5 @@
+{% for audioTrack in audioTracks %}
+- Трек: {{ audioTrack.artist }} — {{ audioTrack.title }}
+    Последний раз был выбран: {{ audioTrack.dateString }}
+
+{% endfor %}

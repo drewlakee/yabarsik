@@ -8,6 +8,7 @@ import com.github.drewlakee.yabarsik.vk.api.GetWallposts
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostComments.Response.VkWallpostComment
 import com.github.drewlakee.yabarsik.vk.api.VkWallposts.VkWallpostsResponse.VkWallpostsItem
+import com.github.drewlakee.yabarsik.vk.api.getLastWallposts
 import com.github.drewlakee.yabarsik.vk.community.VkCommunity
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Success
@@ -19,14 +20,81 @@ private data class VkCommunityWallpost(
     val comments: List<VkWallpostComment>,
 )
 
+private data class AudioTrack(
+    val dateString: String,
+    val artist: String,
+    val title: String,
+)
+
+private data class Photo(
+    val dateString: String,
+    val id: String,
+    val ownerId: String,
+)
+
 class VkCommunityTools(
     private val vkApi: VkApi,
     private val vkManagerCommunity: VkCommunity,
     private val templateRenderer: TemplateRenderer,
 ) {
     @LlmTool(
+        name = "get-recently-posted-audio-tracks",
+        description = "Получает последние вложения c треками, которые былы опубликованы ранее",
+    )
+    fun getRecentlyPostedAudioTracks(
+        @LlmTool.Param(description = "Запрашиваемое количество постов. Максимум 100 на один вызов") limit: Int,
+    ): String =
+        vkApi
+            .getLastWallposts(
+                domain = vkManagerCommunity.domain,
+                count = limit,
+            ).let { result ->
+                when (result) {
+                    is Failure<*> -> {
+                        "Произошла сетевая ошибка. Контент не получилось получить из постов с limit=$limit"
+                    }
+
+                    is Success<*> -> {
+                        buildString {
+                            val audioTracks =
+                                result
+                                    .valueOrNull()!!
+                                    .response.items
+                                    .asSequence()
+                                    .filter {
+                                        it.attachments.isNotEmpty() &&
+                                            it.attachments.any {
+                                                it.audio != null
+                                            }
+                                    }.flatMap { wallpost ->
+                                        wallpost.attachments
+                                            .asSequence()
+                                            .filter { it.audio != null }
+                                            .map { attachment ->
+                                                AudioTrack(
+                                                    dateString = wallpost.dateString,
+                                                    artist = attachment.audio!!.artist,
+                                                    title = attachment.audio.title,
+                                                )
+                                            }
+                                    }.toList()
+
+                            append(
+                                templateRenderer.renderLoadedTemplate(
+                                    "classpath:/templates/get-recently-posted-audio-tracks-tool.jinja",
+                                    mapOf(
+                                        "audioTracks" to audioTracks,
+                                    ),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
+    @LlmTool(
         name = "get-managed-community-wallposts",
-        description = "Получает посты со стены сообщества. В результате есть лайки, репосты, комментарии",
+        description = "Получает посты со стены сообщества, в котором публикуются посты. В ответе будут лайки, репосты, комментарии",
     )
     fun getCommunityWallposts(
         @LlmTool.Param(description = "Смещение по постам. Если 0, то посты берутся с последнего") offset: Int,
