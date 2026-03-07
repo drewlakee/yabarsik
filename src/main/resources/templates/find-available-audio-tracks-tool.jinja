@@ -1,0 +1,6 @@
+{% for attachment in attachments %}
+- Название трека: {{ attachment.audio.artist }} — {{ attachment.audio.title }}
+    id: {{ attachment.audio.id }}
+    ownerId: {{ attachment.audio.ownerId }}
+
+{% endfor %}

@@ -1,0 +1,12 @@
+{% for artistRelease in discogsArtistReleases %}
+- Исполнитель: {{ artistRelease.artist }}
+- Релизы:
+{% for release in artistRelease.releases %}
+    - Название: {{ release.title }}
+        Жанры: {{ release.genres | join(', ') }}
+        Стили: {{ release.styles | join(', ') }}
+        Лейблы: {{ release.labels | join(', ') }}
+
+{% endfor %}
+
+{% endfor %}

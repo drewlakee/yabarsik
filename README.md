@@ -48,11 +48,19 @@
                  └─> Запуск AgentPlatform
                      │
                      ├─> VkCommunityContentManagerAgent
-                     │   ├─> collectCommunityContent()
                      │   ├─> givesNewContentPublishVerdict()
                      │   ├─> findAppropriateMusicMedia()
                      │   ├─> findAppropriateImageMedia()
                      │   └─> publishNewWallpost()
+                     │
+                     ├─> LLM Tools (доступны агенту во время действий)
+                     │   ├─> VkCommunityTools
+                     │   │   ├─> get-recently-posted-audio-tracks
+                     │   │   └─> get-managed-community-wallposts
+                     │   ├─> VkContentProviderTools
+                     │   │   └─> find-available-audio-tracks
+                     │   └─> DiscogsTools
+                     │       └─> find-artist-releases-discogs
                      │
                      ├─> API Clients
                      │   ├─> VkApi
@@ -65,6 +73,17 @@
                          ├─> Generic Model (gpt-oss-120b)
                          └─> Multi-Modal Model (gemma-3-27b-it)
 ```
+
+### LLM Tools
+
+Инструменты, которые агент может вызывать самостоятельно во время выполнения действий:
+
+| Tool | Класс | Описание |
+|------|-------|----------|
+| `get-recently-posted-audio-tracks` | `VkCommunityTools` | Получает последние треки, опубликованные в сообществе — для проверки уникальности |
+| `get-managed-community-wallposts` | `VkCommunityTools` | Получает посты со стены сообщества с лайками, репостами и комментариями |
+| `find-available-audio-tracks` | `VkContentProviderTools` | Ищет треки из настроенных источников контента, доступные для публикации |
+| `find-artist-releases-discogs` | `DiscogsTools` | Обогащает контекст о треках: жанры, стили и релизы исполнителей из Discogs |
 
 ## Конфигурация
 
@@ -105,6 +124,9 @@ embabel:
 
 # Настройки Yabarsik
 yabarsik:
+  function:
+    # Ссылка по контексту, который приходит в момент вызова функци. {functionId}, {requestId} - подставляются при вызове, остальное заранее известно
+    traceLinkTemplate: https://console.yandex.cloud/folders/b1gioucfterb2rnsqb1q/functions/functions/{functionId}/logs?from=now-1d&to=now&size=100&linesInRow=1&resourceTypes=serverless.function&resourceIds=d4eokojak0c0rhr84ki0&query=json_payload.request_id+%3D+%22{requestId}%22
   # Yandex Object Storage (S3)
   s3:
     access-key-id: ${AWS_ACCESS_KEY_ID}
@@ -179,16 +201,7 @@ yabarsik:
 
 ### Промпт-шаблоны (Jinja2)
 
-Барсик использует Jinja2 шаблоны для генерации промптов к LLM. Шаблоны находятся в `src/main/resources/prompts/`:
-
-#### `publishNewContentVerdict.jinja`
-Анализирует последние посты и принимает решение о публикации.
-
-#### `findAppropriateMusicMedia.jinja`
-Выбирает наиболее подходящий трек из коллекции.
-
-#### `findAppropriateImageMedia.jinja`
-Оценивает качество и соответствие изображений критериям.
+Барсик использует Jinja2 шаблоны для генерации промптов к LLM и tool-calling. Шаблоны находятся в `src/main/resources/`
 
 # Деплой Барсика
 

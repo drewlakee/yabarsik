@@ -7,11 +7,13 @@ import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.telegram.api.TelegramApi
 import com.github.drewlakee.yabarsik.telegram.api.http
 import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChat
+import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChatProperties
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.http
 import com.github.drewlakee.yabarsik.vk.community.VkCommunity
 import com.github.drewlakee.yabarsik.vk.content.ContentProvidersConfigurationProperties
 import com.github.drewlakee.yabarsik.vk.content.VkContentProvider
+import com.github.drewlakee.yabarsik.yandex.function.YandexFunctionService
 import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
 import com.github.drewlakee.yabarsik.yandex.s3.api.http
 import org.springframework.beans.factory.annotation.Value
@@ -69,11 +71,27 @@ open class YabarsikContextConfiguration {
 
     @Bean
     @ConfigurationProperties(prefix = "yabarsik.content")
-    open fun contentProvidersConfigurationProperties(): ContentProvidersConfigurationProperties = ContentProvidersConfigurationProperties()
+    open fun contentProvidersConfigurationProperties() = ContentProvidersConfigurationProperties()
 
     @Bean
     @ConfigurationProperties(prefix = "yabarsik.telegram.report")
-    open fun telegramReportChat(): TelegramReportChat = TelegramReportChat()
+    open fun telegramReportChatProperties() = TelegramReportChatProperties()
+
+    @Bean
+    open fun telegramReportChat(
+        telegramReportChatProperties: TelegramReportChatProperties,
+        telegramApi: TelegramApi,
+    ) = TelegramReportChat(
+        chatProperties = telegramReportChatProperties,
+        telegramApi = telegramApi,
+    )
+
+    @Bean
+    open fun yandexFunctionService(
+        @Value("\${yabarsik.function.traceLinkTemplate}") traceLinkTemplate: String,
+    ) = YandexFunctionService(
+        traceLinkTemplate = traceLinkTemplate,
+    )
 
     @Bean
     open fun vkContentProvider(configurationProperties: ContentProvidersConfigurationProperties) =

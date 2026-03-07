@@ -30,5 +30,6 @@
 {% for attachment in attachments %}
 - id: {{ attachment.photo.id }}
   ownerId: {{ attachment.photo.ownerId }}
+  url: {{ attachment.photo.origPhoto.url }}
 
 {% endfor %}

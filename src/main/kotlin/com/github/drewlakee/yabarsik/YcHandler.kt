@@ -10,6 +10,10 @@ import com.github.drewlakee.yabarsik.agents.VkCommunityContentManagerAgentResult
 import com.github.drewlakee.yabarsik.configuration.EmbabelAgentsContextConfiguration
 import com.github.drewlakee.yabarsik.configuration.EmbabelOpenAiModelsContextConfiguration
 import com.github.drewlakee.yabarsik.configuration.YabarsikContextConfiguration
+import com.github.drewlakee.yabarsik.telegram.chat.TelegramMessage
+import com.github.drewlakee.yabarsik.telegram.chat.TelegramReportChat
+import com.github.drewlakee.yabarsik.telegram.chat.appendNewLine
+import com.github.drewlakee.yabarsik.yandex.function.YandexFunctionService
 import com.github.drewlakee.yabarsik.yandex.s3.api.YandexS3Api
 import com.github.drewlakee.yabarsik.yandex.s3.api.http
 import dev.forkhandles.result4k.orThrow
@@ -35,7 +39,7 @@ class YcHandler : YcFunction<Request, Response> {
         context: Context,
     ): Response {
         AnnotationConfigApplicationContext()
-            .use { context ->
+            .use { springContext ->
                 val applicationConfiguration =
                     YandexS3Api
                         .http()
@@ -46,29 +50,66 @@ class YcHandler : YcFunction<Request, Response> {
 
                 YamlPropertySourceLoader().run {
                     load("applicationProperties", ByteArrayResource(applicationConfiguration.readAllBytes()))
-                        .forEach { source -> context.environment.propertySources.addLast(source) }
+                        .forEach { source -> springContext.environment.propertySources.addLast(source) }
                 }
-                context.register(
+                springContext.register(
                     YabarsikContextConfiguration::class.java,
                     EmbabelOpenAiModelsContextConfiguration::class.java,
                     EmbabelAgentsContextConfiguration::class.java,
                     AgentPlatformAutoConfiguration::class.java,
                 )
-                context.refresh()
+                springContext.refresh()
 
-                val agentPlatform = context.getBean(AgentPlatform::class.java)
-                AgentInvocation
-                    .builder(agentPlatform)
-                    .options(
-                        ProcessOptions(
-                            verbosity =
-                                Verbosity(
-                                    showPrompts = true,
-                                    showLlmResponses = true,
-                                ),
-                        ),
-                    ).build(VkCommunityContentManagerAgentResult::class.java)
-                    .run(mapOf())
+                val telegramReportChat = springContext.getBean(TelegramReportChat::class.java)
+                val functionService = springContext.getBean(YandexFunctionService::class.java)
+                val agentPlatform = springContext.getBean(AgentPlatform::class.java)
+
+                val agentResult =
+                    AgentInvocation
+                        .builder(agentPlatform)
+                        .options(
+                            ProcessOptions(
+                                verbosity =
+                                    Verbosity(
+                                        showPrompts = true,
+                                        showLlmResponses = true,
+                                    ),
+                            ),
+                        ).build(VkCommunityContentManagerAgentResult::class.java)
+                        .run(mapOf())
+                        .last(VkCommunityContentManagerAgentResult::class.java)
+
+                when (agentResult) {
+                    is VkCommunityContentManagerAgentResult.AchievedGoal -> {
+                        telegramReportChat.sendMessage(
+                            TelegramMessage.formatted {
+                                append(agentResult.message)
+                                appendNewLine()
+                                append("[Логи вызова функции](${functionService.getTraceLink(context)})")
+                            },
+                        )
+                    }
+
+                    is VkCommunityContentManagerAgentResult.IntermediateResult -> {
+                        telegramReportChat.sendMessage(
+                            TelegramMessage.formatted {
+                                append(agentResult.message)
+                                appendNewLine()
+                                append("[Логи вызова функции](${functionService.getTraceLink(context)})")
+                            },
+                        )
+                    }
+
+                    null -> {
+                        telegramReportChat.sendMessage(
+                            TelegramMessage.formatted {
+                                append("Платформа агентов вернула пустой результат. Обрати внимание на ошибки!")
+                                appendNewLine()
+                                append("[Логи вызова функции](${functionService.getTraceLink(context)})")
+                            },
+                        )
+                    }
+                }
             }
         return Response.Status.OK
     }
