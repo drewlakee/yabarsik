@@ -19,6 +19,8 @@ dependencies {
     implementation("com.embabel.agent:embabel-agent-starter:0.3.4")
     implementation("com.embabel.agent:embabel-agent-openai:0.3.4")
 
+    implementation("net.logstash.logback:logstash-logback-encoder:9.0")
+
     testImplementation(kotlin("test"))
 }
 
