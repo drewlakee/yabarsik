@@ -124,6 +124,9 @@ embabel:
 
 # Настройки Yabarsik
 yabarsik:
+  function:
+    # Ссылка по контексту, который приходит в момент вызова функци. {functionId}, {requestId} - подставляются при вызове, остальное заранее известно
+    traceLinkTemplate: https://console.yandex.cloud/folders/b1gioucfterb2rnsqb1q/functions/functions/{functionId}/logs?from=now-1d&to=now&size=100&linesInRow=1&resourceTypes=serverless.function&resourceIds=d4eokojak0c0rhr84ki0&query=json_payload.request_id+%3D+%22{requestId}%22
   # Yandex Object Storage (S3)
   s3:
     access-key-id: ${AWS_ACCESS_KEY_ID}
