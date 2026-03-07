@@ -1,0 +1,14 @@
+{% for communityPost in communityWallposts %}
+### Пост id: {{ communityPost.wallpost.id }}
+- Был создан: {{ communityPost.wallpost.dateString }}
+- Лайков: {{ communityPost.wallpost.likes.count }}
+- Репостов {{ communityPost.wallpost.reposts.count }}
+- Комментариев: {{ communityPost.wallpost.comments.count }}
+{% if communityPost.comments|length > 0 %}
+    Комментарии:
+    {% for comment in communityPost.comments %}
+        - {{ comment.dateString }}: {{ comment.text }}
+    {% endfor %}
+{% endif %}
+
+{% endfor %}

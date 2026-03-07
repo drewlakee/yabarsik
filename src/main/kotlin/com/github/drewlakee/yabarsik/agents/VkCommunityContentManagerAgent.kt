@@ -7,6 +7,7 @@ import com.embabel.agent.api.common.AgentImage
 import com.embabel.agent.api.common.OperationContext
 import com.embabel.agent.api.common.SomeOf
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
+import com.github.drewlakee.yabarsik.agents.tools.VkCommunityTools
 import com.github.drewlakee.yabarsik.configuration.YabarsikLlmModels
 import com.github.drewlakee.yabarsik.discogs.api.ArtistReleases
 import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
@@ -14,7 +15,6 @@ import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.prompt.YabarsikPromptContributors
-import com.github.drewlakee.yabarsik.vk.api.GetComments
 import com.github.drewlakee.yabarsik.vk.api.PostWallpost
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.VkPostWallpostAttachment
@@ -118,53 +118,19 @@ class VkCommunityContentManagerAgent(
     private val discogsApi: DiscogsApi,
     private val vkManagerCommunity: VkCommunity,
     private val vkContentProvider: VkContentProvider,
+    private val vkCommunityTools: VkCommunityTools,
 ) {
-    @Action(description = "Собирает актуальное состояние контента в сообществе для принятия дальнейших решений")
-    fun collectCommunityContent(): ActualCommunityContent {
-        val lastCommunityWallposts =
-            vkApi
-                .getLastWallposts(
-                    domain = vkManagerCommunity.domain,
-                    count = 10,
-                ).orThrow()
-                .response.items
-                .map { post ->
-                    if (post.comments.count > 0) {
-                        return@map CommunityWallpost(
-                            wallpost = post,
-                            comments =
-                                vkApi(
-                                    GetComments(
-                                        ownerId = vkManagerCommunity.id,
-                                        postId = post.id,
-                                    ),
-                                ).orThrow().response.items,
-                        )
-                    }
-
-                    CommunityWallpost(
-                        wallpost = post,
-                        comments = listOf(),
-                    )
-                }
-
-        return ActualCommunityContent(lastCommunityWallposts)
-    }
-
     @Action(description = "Агент принимает решение о том, следует ли совершить публикацию")
-    fun givesNewContentPublishVerdict(
-        operationContext: OperationContext,
-        actualCommunityContent: ActualCommunityContent,
-    ): PublishNewContentVerdictSomeOf =
+    fun givesNewContentPublishVerdict(operationContext: OperationContext): PublishNewContentVerdictSomeOf =
         operationContext
             .ai()
             .withLlm(YabarsikLlmModels.GENERIC_MODEL.modelName)
+            .withToolObject(vkCommunityTools)
             .withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
             .rendering("publishNewContentVerdict.jinja")
             .createObject(
                 PublishNewContentVerdict::class.java,
                 mapOf(
-                    "content" to actualCommunityContent,
                     "nowDateString" to Instant.now().toString(),
                 ),
             ).let { verdict ->

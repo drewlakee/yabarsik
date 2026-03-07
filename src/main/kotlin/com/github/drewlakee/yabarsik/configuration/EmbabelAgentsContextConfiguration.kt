@@ -1,6 +1,8 @@
 package com.github.drewlakee.yabarsik.configuration
 
+import com.embabel.common.textio.template.TemplateRenderer
 import com.github.drewlakee.yabarsik.agents.VkCommunityContentManagerAgent
+import com.github.drewlakee.yabarsik.agents.tools.VkCommunityTools
 import com.github.drewlakee.yabarsik.discogs.api.DiscogsApi
 import com.github.drewlakee.yabarsik.images.ImagesApi
 import com.github.drewlakee.yabarsik.vk.api.VkApi
@@ -18,11 +20,24 @@ open class EmbabelAgentsContextConfiguration {
         discogsApi: DiscogsApi,
         vkCommunity: VkCommunity,
         vkContentProvider: VkContentProvider,
+        vkCommunityTools: VkCommunityTools,
     ) = VkCommunityContentManagerAgent(
         vkApi = vkApi,
         imagesApi = imagesApi,
         discogsApi = discogsApi,
         vkManagerCommunity = vkCommunity,
         vkContentProvider = vkContentProvider,
+        vkCommunityTools = vkCommunityTools,
+    )
+
+    @Bean
+    open fun vkCommunityTools(
+        vkApi: VkApi,
+        vkManagerCommunity: VkCommunity,
+        templateRenderer: TemplateRenderer,
+    ) = VkCommunityTools(
+        vkApi = vkApi,
+        vkManagerCommunity = vkManagerCommunity,
+        templateRenderer = templateRenderer,
     )
 }
