@@ -56,7 +56,7 @@ data class LlmAppropriateMusicMedia(
     @get:JsonPropertyDescription("Идентификатор самого трека (id)")
     val id: Int,
     @get:JsonPropertyDescription("Название исполнителя")
-    val artist: Int,
+    val artist: String,
     @get:JsonPropertyDescription("Название трека")
     val track: String,
     @get:JsonPropertyDescription("Причина по которой был сделан выбор")
