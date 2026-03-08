@@ -135,8 +135,11 @@ class VkCommunityContentManagerAgent(
                     model = YabarsikLlmModels.GENERIC_MODEL.modelName
                     temperature = 0.6
                 },
-            ).withToolObjects(vkCommunityTools, vkContentProviderTools, discogsTools)
-            .withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
+            ).withToolObjects(
+                vkCommunityTools,
+                vkContentProviderTools,
+                discogsTools,
+            ).withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
             .rendering("findAppropriateMusicMedia.jinja")
             .createObject(
                 LlmAppropriateMusicMedia::class.java,

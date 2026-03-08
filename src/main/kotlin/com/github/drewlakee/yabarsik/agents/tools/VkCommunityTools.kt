@@ -39,7 +39,7 @@ class VkCommunityTools(
 ) {
     @LlmTool(
         name = "get-recently-posted-audio-tracks",
-        description = "Получает последние вложения c треками, которые былы опубликованы ранее",
+        description = "Получает уже ранее опубликованные треки в сообществе",
     )
     fun getRecentlyPostedAudioTracks(
         @LlmTool.Param(description = "Запрашиваемое количество постов. Максимум 100 на один вызов") limit: Int,

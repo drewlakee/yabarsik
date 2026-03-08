@@ -8,8 +8,8 @@ import com.github.drewlakee.yabarsik.discogs.api.getArtistReleases
 import dev.forkhandles.result4k.valueOrNull
 
 data class Track(
-    val artist: String,
-    val trackTitle: String,
+    @LlmTool.Param(description = "Название исполнителя") val artist: String,
+    @LlmTool.Param(description = "Определенный трек исполнителя, указывается при необходимости") val track: String?,
 )
 
 class DiscogsTools(
@@ -21,26 +21,25 @@ class DiscogsTools(
         description = "Получает из сервиса Discogs дополнительную информацию о релизах исполнителей, их жанрах, стилях и так далее",
     )
     fun findArtistReleases(
-        @LlmTool.Param(description = "Исполнители и их треки, по которым нужно найти дополнительную информацию по релизам") tracks:
-            List<Track>,
+        @LlmTool.Param(description = "Исполнители и их треки, по которым нужно найти дополнительную информацию по релизам")
+        artistTracks: List<Track>,
     ): String {
         val discogsArtistReleases: List<ArtistReleases> =
             sequence {
-                tracks
+                artistTracks
+                    .asSequence()
+                    .filter { it.track != null }
                     .mapNotNull { (artist, track) ->
                         discogsApi
-                            .getArtistReleases(
-                                artist = artist,
-                                track = track,
-                            ).valueOrNull()
+                            .getArtistReleases(artist = artist, track = track)
+                            .valueOrNull()
                     }.forEach { yield(it) }
-                tracks
+                artistTracks
                     .asSequence()
                     .mapNotNull { artist ->
                         discogsApi
-                            .getArtistReleases(
-                                artist = artist.artist,
-                            ).valueOrNull()
+                            .getArtistReleases(artist = artist.artist)
+                            .valueOrNull()
                     }.forEach { yield(it) }
             }.groupBy { it.artist }
                 .entries
