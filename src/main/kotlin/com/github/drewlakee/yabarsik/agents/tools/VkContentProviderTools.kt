@@ -76,7 +76,7 @@ class VkContentProviderTools(
 
         val attachments = collectedAttachments.filter { it.photo!!.ownerId in openOwners }
 
-        if (attachments.size <= 2) {
+        if (attachments.size < 2) {
             throw RuntimeException("there's not enough (<2) media attachments for LLM ranking")
         }
 
@@ -129,7 +129,7 @@ class VkContentProviderTools(
 
         val attachments = collectedAttachments.filter { it.audio!!.ownerId in openOwners }
 
-        if (attachments.size <= 2) {
+        if (attachments.size < 2) {
             throw RuntimeException("findAppropriateMusicMedia: there's not enough (<2) media attachments for LLM ranking")
         }
 
