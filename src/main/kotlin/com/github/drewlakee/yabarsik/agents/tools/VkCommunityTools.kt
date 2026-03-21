@@ -8,7 +8,6 @@ import com.github.drewlakee.yabarsik.vk.api.GetWallposts
 import com.github.drewlakee.yabarsik.vk.api.VkApi
 import com.github.drewlakee.yabarsik.vk.api.VkWallpostComments.Response.VkWallpostComment
 import com.github.drewlakee.yabarsik.vk.api.VkWallposts.VkWallpostsResponse.VkWallpostsItem
-import com.github.drewlakee.yabarsik.vk.api.getLastWallposts
 import com.github.drewlakee.yabarsik.vk.community.VkCommunity
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Success
@@ -26,12 +25,6 @@ private data class AudioTrack(
     val title: String,
 )
 
-private data class Photo(
-    val dateString: String,
-    val id: String,
-    val ownerId: String,
-)
-
 class VkCommunityTools(
     private val vkApi: VkApi,
     private val vkManagerCommunity: VkCommunity,
@@ -42,12 +35,16 @@ class VkCommunityTools(
         description = "Получает уже ранее опубликованные треки в сообществе",
     )
     fun getRecentlyPostedAudioTracks(
+        @LlmTool.Param(description = "Смещение по постам. Если 0, то посты берутся с последнего") offset: Int,
         @LlmTool.Param(description = "Запрашиваемое количество постов. Максимум 100 на один вызов") limit: Int,
     ): String =
         vkApi
-            .getLastWallposts(
-                domain = vkManagerCommunity.domain,
-                count = limit,
+            .invoke(
+                GetWallposts(
+                    domain = vkManagerCommunity.domain,
+                    offset = offset,
+                    count = limit,
+                ),
             ).let { result ->
                 when (result) {
                     is Failure<*> -> {
