@@ -36,7 +36,6 @@ class VkCommunityTools(
             Не рекомендуется делать много маленьких запросов, лучше делать смещения сразу по 100 постов.
             Не рекомендуется делать слишком много запросов.
         """,
-        returnDirect = true,
     )
     fun getRecentlyPostedAudioTracks(
         @LlmTool.Param(description = "Смещение по постам. Если 0, то посты берутся с последнего") offset: Int,
@@ -104,7 +103,6 @@ class VkCommunityTools(
             Не рекомендуется делать много маленьких запросов, лучше делать смещения сразу по 100 постов.
             Не рекомендуется делать слишком много запросов.
         """,
-        returnDirect = true,
     )
     fun getCommunityWallposts(
         @LlmTool.Param(description = "Смещение по постам. Если 0, то посты берутся с последнего") offset: Int,

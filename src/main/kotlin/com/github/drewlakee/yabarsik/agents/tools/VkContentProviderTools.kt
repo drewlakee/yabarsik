@@ -100,7 +100,6 @@ class VkContentProviderTools(
             Ищет треки по известным источникам, которые доступны для публикации в посте.
             Не рекомендуется запрашивать слишком много и часто.
         """,
-        returnDirect = true,
     )
     fun findAudioTracks(
         @LlmTool.Param(
