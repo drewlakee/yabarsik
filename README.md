@@ -116,6 +116,8 @@ embabel:
     default-llm: generic-model  # Модель по умолчанию
   agent:
     platform:
+      toolloop:
+        max-iterations: 10       # Максимум циклов для вызова тулов LLM-кой в одном действии агента
       action-qos:
         maxAttempts: 3           # Максимум попыток выполнения действия
       llm-operations:
@@ -157,7 +159,16 @@ yabarsik:
     base-url: https://llm.api.cloud.yandex.net
     api-key: ${YANDEX_CLOUD_LLM_API_KEY}
 
-    # Текстовая модель (для анализа музыки и принятия решений)
+    # Текстовая модель (для принятия решений)
+    thinking-model:
+      name: "gpt://b1gioucfterb2rnsqb1q/deepseek-v32"
+      retry:
+        max-attempts: 3
+        backoff-initial-interval-millis: 2000
+        backoff-multiplier: 5.0
+        backoff-max-interval-millis: 180000
+
+    # Текстовая модель (для быстрых запросов и менее глубоких ответов)
     generic-model:
       name: "gpt://b1gioucfterb2rnsqb1q/gpt-oss-120b"
       retry:
