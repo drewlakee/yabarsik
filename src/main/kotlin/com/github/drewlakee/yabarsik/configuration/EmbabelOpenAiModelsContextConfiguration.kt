@@ -77,6 +77,54 @@ open class EmbabelOpenAiModelsContextConfiguration(
         )
 
     @Bean
+    open fun thinkingModel(
+        @Value("\${yabarsik.openai.base-url}")
+        baseUrl: String,
+        @Value("\${yabarsik.openai.thinking-model.name}")
+        openAiProviderModelName: String,
+        @Value("\${yabarsik.openai.thinking-model.retry.max-attempts}")
+        maxAttempts: Int,
+        @Value("\${yabarsik.openai.thinking-model.retry.backoff-initial-interval-millis}")
+        backoffInitialIntervalMs: Long,
+        @Value("\${yabarsik.openai.thinking-model.retry.backoff-multiplier}")
+        backoffMultiplier: Double,
+        @Value("\${yabarsik.openai.thinking-model.retry.backoff-max-interval-millis}")
+        backoffMaxIntervalMs: Long,
+    ): LlmService<*> =
+        SpringAiLlmService(
+            name = YabarsikLlmModels.THINKING_MODEL.modelName,
+            chatModel =
+                chatModelOf(
+                    model = openAiProviderModelName,
+                    retryTemplate =
+                        RetryTemplate
+                            .builder()
+                            .maxAttempts(maxAttempts)
+                            .retryOn(TransientAiException::class.java)
+                            .retryOn(ResourceAccessException::class.java)
+                            .exponentialBackoff(
+                                Duration.ofMillis(backoffInitialIntervalMs),
+                                backoffMultiplier,
+                                Duration.ofMillis(backoffMaxIntervalMs),
+                            ).withListener(
+                                object : RetryListener {
+                                    override fun <T, E : Throwable?> onError(
+                                        context: RetryContext,
+                                        callback: RetryCallback<T?, E?>?,
+                                        throwable: Throwable?,
+                                    ) {
+                                        logger.warn("OpenAI client retry error. Retry count:{}", context.retryCount, throwable)
+                                    }
+                                },
+                            ).build(),
+                ),
+            provider = "<$baseUrl>:<$openAiProviderModelName>",
+            optionsConverter = OpenAiChatOptionsConverter,
+            pricingModel = PricingModel.ALL_YOU_CAN_EAT,
+            knowledgeCutoffDate = null,
+        )
+
+    @Bean
     open fun multiModalGenericModel(
         @Value("\${yabarsik.openai.base-url}")
         baseUrl: String,

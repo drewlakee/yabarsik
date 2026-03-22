@@ -98,7 +98,7 @@ class VkCommunityContentManagerAgent(
             .ai()
             .withLlm(
                 LlmOptions().apply {
-                    model = YabarsikLlmModels.GENERIC_MODEL.modelName
+                    model = YabarsikLlmModels.THINKING_MODEL.modelName
                     temperature = 0.6
                 },
             ).withToolObject(vkCommunityTools)
@@ -108,6 +108,7 @@ class VkCommunityContentManagerAgent(
                 PublishNewContentVerdict::class.java,
                 mapOf(
                     "nowDateString" to Instant.now().toString(),
+                    "communityDomain" to vkManagerCommunity.domain,
                 ),
             ).let { verdict ->
                 if (verdict.shouldPublish) {
@@ -133,7 +134,6 @@ class VkCommunityContentManagerAgent(
             .withLlm(
                 LlmOptions().apply {
                     model = YabarsikLlmModels.GENERIC_MODEL.modelName
-                    temperature = 0.6
                 },
             ).withToolObjects(
                 vkCommunityTools,
@@ -144,6 +144,7 @@ class VkCommunityContentManagerAgent(
             .createObject(
                 LlmAppropriateMusicMedia::class.java,
                 mapOf(
+                    "communityDomain" to vkManagerCommunity.domain,
                     "nowDateString" to Instant.now().toString(),
                 ),
             )
@@ -159,7 +160,6 @@ class VkCommunityContentManagerAgent(
                     .withLlm(
                         LlmOptions().apply {
                             model = YabarsikLlmModels.MULI_MODAL_GENERIC_MODEL.modelName
-                            temperature = 0.6
                         },
                     ).withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
                     .withImages(images.map { it.agentImage })

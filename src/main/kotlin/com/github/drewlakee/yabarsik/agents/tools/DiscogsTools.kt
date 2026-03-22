@@ -19,6 +19,7 @@ class DiscogsTools(
     @LlmTool(
         name = "find-artist-releases-discogs",
         description = "Получает из сервиса Discogs дополнительную информацию о релизах исполнителей, их жанрах, стилях и так далее",
+        returnDirect = true,
     )
     fun findArtistReleases(
         @LlmTool.Param(description = "Исполнители и их треки, по которым нужно найти дополнительную информацию по релизам")

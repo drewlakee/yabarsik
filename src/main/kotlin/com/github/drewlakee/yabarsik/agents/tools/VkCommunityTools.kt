@@ -2,7 +2,6 @@ package com.github.drewlakee.yabarsik.agents.tools
 
 import com.embabel.agent.api.annotation.LlmTool
 import com.embabel.common.textio.template.TemplateRenderer
-import com.github.drewlakee.yabarsik.telegram.chat.appendNewLine
 import com.github.drewlakee.yabarsik.vk.api.GetComments
 import com.github.drewlakee.yabarsik.vk.api.GetWallposts
 import com.github.drewlakee.yabarsik.vk.api.VkApi
@@ -32,7 +31,12 @@ class VkCommunityTools(
 ) {
     @LlmTool(
         name = "get-recently-posted-audio-tracks",
-        description = "Получает уже ранее опубликованные треки в сообществе",
+        description = """
+            Получает уже ранее опубликованные треки в сообществе.
+            Не рекомендуется делать много маленьких запросов, лучше делать смещения сразу по 100 постов.
+            Не рекомендуется делать слишком много запросов.
+        """,
+        returnDirect = true,
     )
     fun getRecentlyPostedAudioTracks(
         @LlmTool.Param(description = "Смещение по постам. Если 0, то посты берутся с последнего") offset: Int,
@@ -81,6 +85,10 @@ class VkCommunityTools(
                                     "classpath:/templates/get-recently-posted-audio-tracks-tool.jinja",
                                     mapOf(
                                         "audioTracks" to audioTracks,
+                                        "offsetParam" to offset,
+                                        "limitParam" to limit,
+                                        "communityDomain" to vkManagerCommunity.domain,
+                                        "totalCountCommunityWallposts" to result.valueOrNull()!!.response.count,
                                     ),
                                 ),
                             )
@@ -91,7 +99,12 @@ class VkCommunityTools(
 
     @LlmTool(
         name = "get-managed-community-wallposts",
-        description = "Получает посты со стены сообщества, в котором публикуются посты. В ответе будут лайки, репосты, комментарии",
+        description = """
+            Получает посты со стены сообщества, в котором публикуются посты. В ответе будут лайки, репосты, комментарии.
+            Не рекомендуется делать много маленьких запросов, лучше делать смещения сразу по 100 постов.
+            Не рекомендуется делать слишком много запросов.
+        """,
+        returnDirect = true,
     )
     fun getCommunityWallposts(
         @LlmTool.Param(description = "Смещение по постам. Если 0, то посты берутся с последнего") offset: Int,
@@ -112,11 +125,6 @@ class VkCommunityTools(
 
                     is Success<*> -> {
                         buildString {
-                            appendLine(
-                                "Посты получены с offset=$offset limit=$limit. Всего в сообществе постов count=${result.valueOrNull()!!.response.count}",
-                            )
-                            appendNewLine()
-
                             val communityWallposts =
                                 result.valueOrNull()!!.response.items.map { wallpost ->
                                     if (wallpost.comments.count > 0) {
@@ -143,6 +151,10 @@ class VkCommunityTools(
                                     "classpath:/templates/get-managed-community-wallposts-tool.jinja",
                                     mapOf(
                                         "communityWallposts" to communityWallposts,
+                                        "offsetParam" to offset,
+                                        "limitParam" to limit,
+                                        "communityDomain" to vkManagerCommunity.domain,
+                                        "totalCountCommunityWallposts" to result.valueOrNull()!!.response.count,
                                     ),
                                 ),
                             )

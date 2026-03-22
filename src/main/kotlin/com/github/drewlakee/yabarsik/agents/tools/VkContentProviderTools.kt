@@ -96,7 +96,11 @@ class VkContentProviderTools(
 
     @LlmTool(
         name = "find-available-audio-tracks",
-        description = "Ищет треки по известным источникам, которые доступны для публикации в посте",
+        description = """
+            Ищет треки по известным источникам, которые доступны для публикации в посте.
+            Не рекомендуется запрашивать слишком много и часто.
+        """,
+        returnDirect = true,
     )
     fun findAudioTracks(
         @LlmTool.Param(
