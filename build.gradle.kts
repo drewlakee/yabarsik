@@ -15,10 +15,9 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("org.http4k:http4k-connect-core:6.17.0.0")
     implementation("org.http4k:http4k-client-okhttp:6.17.0.0")
-
+    implementation("io.github.oshai:kotlin-logging:8.0.01")
     implementation("com.embabel.agent:embabel-agent-starter:0.3.4")
     implementation("com.embabel.agent:embabel-agent-openai:0.3.4")
-
     implementation("net.logstash.logback:logstash-logback-encoder:9.0")
 
     testImplementation(kotlin("test"))

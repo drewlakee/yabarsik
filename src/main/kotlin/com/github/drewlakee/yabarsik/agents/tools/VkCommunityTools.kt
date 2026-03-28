@@ -10,8 +10,14 @@ import com.github.drewlakee.yabarsik.vk.api.VkWallposts.VkWallpostsResponse.VkWa
 import com.github.drewlakee.yabarsik.vk.community.VkCommunity
 import dev.forkhandles.result4k.Failure
 import dev.forkhandles.result4k.Success
+import dev.forkhandles.result4k.failureOrNull
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.valueOrNull
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+private val log = KotlinLogging.logger {}
 
 private data class VkCommunityWallpost(
     val wallpost: VkWallpostsItem,
@@ -51,6 +57,7 @@ class VkCommunityTools(
             ).let { result ->
                 when (result) {
                     is Failure<*> -> {
+                        log.error { result.failureOrNull() }
                         "Произошла сетевая ошибка. Контент не получилось получить из постов с limit=$limit"
                     }
 
@@ -118,6 +125,7 @@ class VkCommunityTools(
             ).let { result ->
                 when (result) {
                     is Failure<*> -> {
+                        log.error { result.failureOrNull() }
                         "Произошла сетевая ошибка. Посты не получилось получить с offset=$offset limit=$limit"
                     }
 
