@@ -54,6 +54,7 @@ data class VkWallposts(
                 val type: VkWallpostsAttachmentType,
                 val photo: VkWallpostsAttachmentPhoto?,
                 val audio: VkWallpostsAttachmentAudio?,
+                @field:JsonProperty("access_key") val accessKey: String?,
             ) {
                 data class VkWallpostsAttachmentPhoto(
                     val id: Int,

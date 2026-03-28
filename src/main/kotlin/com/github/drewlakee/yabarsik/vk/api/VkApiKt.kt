@@ -1,9 +1,13 @@
 package com.github.drewlakee.yabarsik.vk.api
 
 import dev.forkhandles.result4k.valueOrNull
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val log = KotlinLogging.logger {}
 
 fun VkApi.getOnlyOpenOwners(ownerIds: List<Int>): Set<Int> {
     val (groups, users) = ownerIds.distinct().partition { it.isGroup() }
+    log.info { "Found vk owners: groups=$groups, users=$users" }
 
     val existingUsers =
         if (users.isNotEmpty()) {
@@ -30,6 +34,8 @@ fun VkApi.getOnlyOpenOwners(ownerIds: List<Int>): Set<Int> {
             mapOf()
         }
 
+    log.info { "Existing vk owners: groups=${existingGroups.values}, users=${existingUsers.values}" }
+
     return sequence {
         users
             .asSequence()
@@ -40,6 +46,9 @@ fun VkApi.getOnlyOpenOwners(ownerIds: List<Int>): Set<Int> {
             .filter { it !in existingGroups || existingGroups[it]!!.isOpenGroup() }
             .forEach { yield(it) }
     }.toSet()
+        .also {
+            log.info { "Open vk owner ids $it" }
+        }
 }
 
 private fun VkGroups.Response.Group.isOpenGroup() = isClosed == 0

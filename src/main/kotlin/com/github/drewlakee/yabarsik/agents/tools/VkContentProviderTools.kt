@@ -18,6 +18,9 @@ import com.github.drewlakee.yabarsik.vk.content.VkWallpostAttachment
 import dev.forkhandles.result4k.map
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.recover
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val log = KotlinLogging.logger {}
 
 data class RandomPhoto(
     val agentImage: AgentImage,
@@ -72,6 +75,7 @@ class VkContentProviderTools(
                 }
             }.toList()
 
+        log.info { "Collected photo attachments $collectedAttachments" }
         val openOwners = vkApi.getOnlyOpenOwners(collectedAttachments.map { it.photo!!.ownerId })
 
         val attachments = collectedAttachments.filter { it.photo!!.ownerId in openOwners }
@@ -128,6 +132,7 @@ class VkContentProviderTools(
                 }
             }.toList()
 
+        log.info { "Collected audio attachments $collectedAttachments" }
         val openOwners = vkApi.getOnlyOpenOwners(collectedAttachments.map { it.audio!!.ownerId })
 
         val attachments = collectedAttachments.filter { it.audio!!.ownerId in openOwners }
