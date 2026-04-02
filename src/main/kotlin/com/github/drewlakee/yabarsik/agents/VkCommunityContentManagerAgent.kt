@@ -127,13 +127,13 @@ class VkCommunityContentManagerAgent(
     fun doNotPublishAnyContent(verdict: ShouldNotPublishNewContext): VkCommunityContentManagerAgentResult =
         VkCommunityContentManagerAgentResult.IntermediateResult(verdict.modelResultExplanation)
 
-    @Action(description = "Отбирает подходящее музыкально сопровождение для публикации")
+    @Action(description = "Отбирает подходящее музыкальное сопровождение для публикации")
     fun findAppropriateMusicMedia(operationContext: OperationContext): LlmAppropriateMusicMedia =
         operationContext
             .ai()
             .withLlm(
                 LlmOptions().apply {
-                    model = YabarsikLlmModels.GENERIC_MODEL.modelName
+                    model = YabarsikLlmModels.THINKING_MODEL.modelName
                 },
             ).withToolObjects(
                 vkCommunityTools,
