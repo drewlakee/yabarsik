@@ -5,6 +5,7 @@ import com.embabel.agent.api.annotation.Action
 import com.embabel.agent.api.annotation.Agent
 import com.embabel.agent.api.common.OperationContext
 import com.embabel.agent.api.common.SomeOf
+import com.embabel.agent.api.tool.Tool
 import com.embabel.common.ai.model.LlmOptions
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.github.drewlakee.yabarsik.agents.tools.DiscogsTools
@@ -133,11 +134,12 @@ class VkCommunityContentManagerAgent(
             .ai()
             .withLlm(
                 LlmOptions().apply {
-                    model = YabarsikLlmModels.THINKING_MODEL.modelName
+                    model = YabarsikLlmModels.GENERIC_MODEL.modelName
                 },
             ).withToolObjects(
-                vkContentProviderTools,
-                discogsTools,
+                Tool.fromMethod(vkCommunityTools, VkCommunityTools::getRecentlyPostedAudioTracks),
+                Tool.fromMethod(vkContentProviderTools, VkContentProviderTools::findAudioTracks),
+                Tool.fromMethod(discogsTools, DiscogsTools::findArtistReleases),
             ).withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
             .rendering("findAppropriateMusicMedia.jinja")
             .createObject(
