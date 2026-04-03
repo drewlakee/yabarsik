@@ -136,7 +136,6 @@ class VkCommunityContentManagerAgent(
                     model = YabarsikLlmModels.THINKING_MODEL.modelName
                 },
             ).withToolObjects(
-                vkCommunityTools,
                 vkContentProviderTools,
                 discogsTools,
             ).withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
