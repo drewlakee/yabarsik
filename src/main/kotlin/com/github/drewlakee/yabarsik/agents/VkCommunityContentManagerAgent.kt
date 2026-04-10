@@ -6,6 +6,7 @@ import com.embabel.agent.api.annotation.Agent
 import com.embabel.agent.api.common.OperationContext
 import com.embabel.agent.api.common.SomeOf
 import com.embabel.agent.api.tool.Tool
+import com.embabel.agent.api.tool.ToolCallContext
 import com.embabel.common.ai.model.LlmOptions
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.github.drewlakee.yabarsik.agents.tools.DiscogsTools
@@ -129,26 +130,54 @@ class VkCommunityContentManagerAgent(
         VkCommunityContentManagerAgentResult.IntermediateResult(verdict.modelResultExplanation)
 
     @Action(description = "Отбирает подходящее музыкальное сопровождение для публикации")
-    fun findAppropriateMusicMedia(operationContext: OperationContext): LlmAppropriateMusicMedia =
-        operationContext
-            .ai()
-            .withLlm(
-                LlmOptions().apply {
-                    model = YabarsikLlmModels.GENERIC_MODEL.modelName
-                },
-            ).withToolObjects(
-                Tool.fromMethod(vkCommunityTools, VkCommunityTools::getRecentlyPostedAudioTracks),
-                Tool.fromMethod(vkContentProviderTools, VkContentProviderTools::findAudioTracks),
-                Tool.fromMethod(discogsTools, DiscogsTools::findArtistReleases),
-            ).withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
-            .rendering("findAppropriateMusicMedia.jinja")
-            .createObject(
-                LlmAppropriateMusicMedia::class.java,
-                mapOf(
-                    "communityDomain" to vkManagerCommunity.domain,
-                    "nowDateString" to Instant.now().toString(),
-                ),
+    fun findAppropriateMusicMedia(operationContext: OperationContext): LlmAppropriateMusicMedia {
+        val getRecentlyPostedAudioTracks = Tool.fromMethod(vkCommunityTools, VkCommunityTools::getRecentlyPostedAudioTracks)
+        val findAudioTracks = Tool.fromMethod(vkContentProviderTools, VkContentProviderTools::findAudioTracks)
+        val findArtistReleases = Tool.fromMethod(discogsTools, DiscogsTools::findArtistReleases)
+        val toolInteractionContext =
+            ToolCallContext.of(
+                "collectedMusicAttachments" to mutableMapOf<Int, Int>(), // attachmentId -> ownerId
             )
+        val appropriateMusicMedia =
+            operationContext
+                .ai()
+                .withLlm(
+                    LlmOptions().apply {
+                        model = YabarsikLlmModels.GENERIC_MODEL.modelName
+                    },
+                ).withToolObjects(
+                    getRecentlyPostedAudioTracks,
+                    findAudioTracks,
+                    findArtistReleases,
+                ).withToolCallContext(toolInteractionContext)
+                .withPromptContributor(YabarsikPromptContributors.mediaCommunityManager)
+                .rendering("findAppropriateMusicMedia.jinja")
+                .createObject(
+                    LlmAppropriateMusicMedia::class.java,
+                    mapOf(
+                        "communityDomain" to vkManagerCommunity.domain,
+                        "nowDateString" to Instant.now().toString(),
+                    ),
+                )
+
+        val isAiSlopMusicMedia =
+            toolInteractionContext
+                .get<MutableMap<Int, Int>>("collectedMusicAttachments")
+                ?.get(appropriateMusicMedia.id)
+                ?.let { ownerId -> ownerId != appropriateMusicMedia.ownerId }
+                ?: true
+        if (isAiSlopMusicMedia) {
+            throw RuntimeException(
+                """
+                LLM probably generated AI slop music media with not existing attachment.
+                AI { attachmentId: ${appropriateMusicMedia.id}, ownerId: ${appropriateMusicMedia.ownerId} }.
+                Collected music attachments: ${toolInteractionContext.get<MutableMap<Int, Int>>("collectedMusicAttachments")}
+                """.trimIndent(),
+            )
+        }
+
+        return appropriateMusicMedia
+    }
 
     @Action(description = "Отбирает подходящее изображение для публикации")
     fun findAppropriateImageMedia(operationContext: OperationContext): LlmAppropriateImageMedia =

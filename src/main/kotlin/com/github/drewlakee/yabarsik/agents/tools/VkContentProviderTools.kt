@@ -2,6 +2,7 @@ package com.github.drewlakee.yabarsik.agents.tools
 
 import com.embabel.agent.api.annotation.LlmTool
 import com.embabel.agent.api.common.AgentImage
+import com.embabel.agent.api.tool.ToolCallContext
 import com.embabel.common.textio.template.TemplateRenderer
 import com.github.drewlakee.yabarsik.images.GetImage
 import com.github.drewlakee.yabarsik.images.ImagesApi
@@ -18,6 +19,7 @@ import com.github.drewlakee.yabarsik.vk.content.VkWallpostAttachment
 import dev.forkhandles.result4k.map
 import dev.forkhandles.result4k.orThrow
 import dev.forkhandles.result4k.recover
+import dev.forkhandles.result4k.valueOrNull
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val log = KotlinLogging.logger {}
@@ -112,6 +114,7 @@ class VkContentProviderTools(
         @LlmTool.Param(
             description = "Сколько стоит брать из каждого источника, чтобы был больше разброс между исполнителями. Желательно не больше 3",
         ) limitByTracksSource: Int,
+        context: ToolCallContext,
     ): String {
         val repeat = limitTracks / limitByTracksSource
         val wallpostsCountMemoizationPerDomain = mutableMapOf<String, Int>()
@@ -119,16 +122,17 @@ class VkContentProviderTools(
             sequence {
                 repeat(repeat) {
                     val domain = vkContentProvider.getRandomByMedia(ContentMedia.MUSIC).domain
-                    val response =
-                        vkApi
-                            .takeAttachmentsRandomly(
-                                domain = domain,
-                                count = limitByTracksSource,
-                                type = VkWallpostsAttachmentType.AUDIO,
-                                domainWallpostsCount = wallpostsCountMemoizationPerDomain[domain],
-                            ).orThrow()
-                    wallpostsCountMemoizationPerDomain[domain] = response.totalWallpostsCount
-                    response.attachments.forEach { yield(it) }
+                    vkApi
+                        .takeAttachmentsRandomly(
+                            domain = domain,
+                            count = limitByTracksSource,
+                            type = VkWallpostsAttachmentType.AUDIO,
+                            domainWallpostsCount = wallpostsCountMemoizationPerDomain[domain],
+                        ).valueOrNull()
+                        ?.run {
+                            wallpostsCountMemoizationPerDomain[domain] = totalWallpostsCount
+                            attachments.forEach { yield(it) }
+                        }
                 }
             }.toList()
 
@@ -139,6 +143,13 @@ class VkContentProviderTools(
 
         if (attachments.size < 2) {
             throw RuntimeException("findAppropriateMusicMedia: there's not enough (<2) media attachments for LLM ranking")
+        }
+
+        attachments.forEach { attachment ->
+            context.get<MutableMap<Int, Int>>("collectedMusicAttachments")?.put(
+                key = attachment.audio!!.id,
+                value = attachment.audio.ownerId,
+            )
         }
 
         return templateRenderer.renderLoadedTemplate(
