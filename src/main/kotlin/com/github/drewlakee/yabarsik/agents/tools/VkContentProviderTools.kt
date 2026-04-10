@@ -63,17 +63,18 @@ class VkContentProviderTools(
             sequence {
                 repeat(5) {
                     val domain = vkContentProvider.getRandomByMedia(ContentMedia.IMAGES).domain
-                    val response =
-                        vkApi
-                            .takeAttachmentsRandomly(
-                                domain = domain,
-                                count = 2,
-                                type = VkWallpostsAttachmentType.PHOTO,
-                                domainWallpostsCount = wallpostsCountMemoizationPerDomain[domain],
-                                excludeWallpostAttachments = previousChoiceImages,
-                            ).orThrow()
-                    wallpostsCountMemoizationPerDomain[domain] = response.totalWallpostsCount
-                    response.attachments.forEach { yield(it) }
+                    vkApi
+                        .takeAttachmentsRandomly(
+                            domain = domain,
+                            count = 2,
+                            type = VkWallpostsAttachmentType.PHOTO,
+                            domainWallpostsCount = wallpostsCountMemoizationPerDomain[domain],
+                            excludeWallpostAttachments = previousChoiceImages,
+                        ).valueOrNull()
+                        ?.run {
+                            wallpostsCountMemoizationPerDomain[domain] = totalWallpostsCount
+                            attachments.forEach { yield(it) }
+                        }
                 }
             }.toList()
 
