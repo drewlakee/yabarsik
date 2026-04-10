@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import dev.forkhandles.result4k.Result4k
+import okhttp3.OkHttpClient
 import org.http4k.client.OkHttp
 import org.http4k.cloudnative.RemoteRequestFailed
 import org.http4k.connect.Action
@@ -14,6 +15,7 @@ import org.http4k.core.Uri
 import org.http4k.core.then
 import org.http4k.filter.ClientFilters.SetBaseUriFrom
 import org.http4k.filter.RequestFilters.SetHeader
+import java.time.Duration
 
 interface VkApiAction<R> : Action<Result4k<R, RemoteRequestFailed>> {
     companion object {
@@ -43,7 +45,16 @@ fun VkApi.Companion.http(
         private val http =
             SetBaseUriFrom(Uri.of("https://api.vk.ru"))
                 .then(SetHeader("Accept", "application/json"))
-                .then(OkHttp())
+                .then(
+                    OkHttp(
+                        OkHttpClient
+                            .Builder()
+                            .connectTimeout(Duration.ofSeconds(10))
+                            .readTimeout(Duration.ofSeconds(30))
+                            .writeTimeout(Duration.ofSeconds(10))
+                            .build(),
+                    ),
+                )
 
         override fun <R : Any> invoke(action: VkApiAction<R>): Result4k<R, RemoteRequestFailed> =
             action.toResult(
